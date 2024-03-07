@@ -20,8 +20,7 @@ class Pattern:
     NOT_LETTER_DIGIT = r'[^0-9A-z]'
     NOT_DIGIT = r'[^0-9]'
     WHITESPACE = r'[\s' + whitespace + ']'
-    SYMBOL = r'[()[]:*+-=;,<]'
-    SYMBOL_WITHOUT_EQUAL = r'[()\[\]:*+-;,<>]'
+    SYMBOL_WITHOUT_EQUAL = r'[;:,\[\]\(\)\{\}\+\-\*<]'
     EQUAL = r'='
     NOT_EQUAL = r'[^=]'
     COMMENT_SLASH_SYMBOL = r'/'
@@ -37,9 +36,9 @@ counter = iter(range(1000000))
 
 class State(Enum):
 
-    def __init__(self, id, final, look_ahead, tokenType=None):
-        self.final = final
-        self.look_ahead = look_ahead
+    def __init__(self, id, is_final, is_lookahead, tokenType=None):
+        self.is_final = is_final
+        self.is_lookahead = is_lookahead
         self.tokenType = tokenType
 
     INITIAL_STATE = (next(counter), False, False)
