@@ -19,6 +19,9 @@ if __name__ == '__main__':
     scanner = Scanner(filePath)
     for i in range(0, 1000) :
         print(i)
-        print(scanner.get_next_token())
+        token = scanner.get_next_token()
+        print(token)
+        if token == "$":
+            break
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

@@ -11,7 +11,8 @@ class ScannerDfa:
             Pattern.SYMBOL_WITHOUT_EQUAL: State.FINAL_VISIT_EXCEPT_EQUAL_SYMBOL_STATE,
             Pattern.EQUAL: State.VISIT_EQUAL_SYMBOL_STATE,
             Pattern.WHITESPACE: State.FINAL_WHITESPACE_STATE,
-            Pattern.LETTER: State.VISIT_LETTER_ID_STATE
+            Pattern.LETTER: State.VISIT_LETTER_ID_STATE,
+            Pattern.EOF : State.FINAL_EOF_STATE
         },
         State.VISIT_NUM_STATE: {
             # Todo : Add error handling state for number like 123d

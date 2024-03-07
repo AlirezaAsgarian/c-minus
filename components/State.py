@@ -11,6 +11,7 @@ class TokenType(Enum):
     SYMBOL = 3
     COMMENT = 4
     WHITESPACE = 5
+    EOF = 6
 
 
 class Pattern:
@@ -27,6 +28,7 @@ class Pattern:
     NOT_COMMENT_SLASH_SYMBOL = r'[^/]'
     COMMENT_STAR_SYMBOL = r'[*]'
     ALL = r'.'
+    EOF = r'^$'
     NOT_EOF = r'[^' + chr(3) + ']'
 
 # If you have two similar constructor for enums in python it consider them as one enum not two, so we should add a
@@ -70,3 +72,7 @@ class State(Enum):
 
     # Whitespace state
     FINAL_WHITESPACE_STATE = (next(counter), True, False)
+
+    # EOF state
+    FINAL_EOF_STATE = (next(counter), True, False, TokenType.EOF)
+
