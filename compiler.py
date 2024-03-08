@@ -29,6 +29,8 @@ if __name__ == '__main__':
             print(token.token_type, end="")
             print(scanner.lineno, end="")
             print(token.lexeme)
+        if (token.token_type == TokenType.EOF):
+            break
         if token == "$":
             break
 
