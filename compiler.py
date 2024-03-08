@@ -1,16 +1,8 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 from components.Scanner import Scanner
 from components.ScannerDfa import ScannerDfa
 from components.State import State, Pattern, TokenType
 import re
 
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
 
     # Press the green button in the gutter to run the script.
 def write_symbol_table(symbols):
@@ -31,9 +23,5 @@ if __name__ == '__main__':
             print(token.lexeme)
         if (token.token_type == TokenType.EOF):
             break
-        if token == "$":
-            break
 
     write_symbol_table(scanner.symbols)
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
