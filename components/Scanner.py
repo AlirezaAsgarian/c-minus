@@ -1,3 +1,4 @@
+from copy import copy
 from dataclasses import dataclass
 
 from components.ScannerDfa import ScannerDfa
@@ -11,6 +12,7 @@ class Scanner :
         self.current_state = State.INITIAL_STATE
         self.buffer = ""
         self.source_file = open(filepath, "r")
+        self.symbols = copy(KEYWORDS)
 
 
     def eval_next_char(self, next_char):
@@ -32,8 +34,11 @@ class Scanner :
                 result = self.buffer
             self.reset()
 
-            if(result_state.token_type == TokenType.ID and KEYWORDS.__contains__(result)):
-                return Token(TokenType.KEYWORD, result)
+            if(result_state.token_type == TokenType.ID):
+                if not self.symbols.__contains__(result):
+                    self.symbols.append(copy(result)) # Add to symbol tables
+                if KEYWORDS.__contains__(result):
+                    return Token(TokenType.KEYWORD, result)
 
             return Token(result_state.token_type, result)
         return None
