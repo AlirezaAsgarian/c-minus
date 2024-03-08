@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 from enum import Enum
-from string import ascii_letters, digits, whitespace, printable
-from typing import List, Union, Optional
+from string import whitespace
 
-KEYWORDS = ['break', 'continue', 'void', 'else', 'if', 'return', 'while', 'main']
+KEYWORDS = ['if', 'else', 'void', 'int', 'for', 'break', 'return', 'endif']
 
 class TokenType(Enum):
     NUM = 0
