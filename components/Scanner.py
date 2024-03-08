@@ -1,5 +1,7 @@
+from dataclasses import dataclass
+
 from components.ScannerDfa import ScannerDfa
-from components.State import State
+from components.State import State, TokenType, KEYWORDS
 
 
 class Scanner :
@@ -22,13 +24,18 @@ class Scanner :
 
         self.buffer = self.buffer + next_char
         if self.current_state.is_final:  # State is final
-            if self.current_state.is_lookahead:
+            result_state = self.current_state
+            if result_state.is_lookahead:
                 result = self.buffer[:-1]
                 self.move_file_cursor_to_previous_char()
             else:
                 result = self.buffer
             self.reset()
-            return result
+
+            if(result_state.token_type == TokenType.ID and KEYWORDS.__contains__(result)):
+                return Token(TokenType.KEYWORD, result)
+
+            return Token(result_state.token_type, result)
         return None
 
     def move_file_cursor_to_previous_char(self):
@@ -38,7 +45,7 @@ class Scanner :
         while True:
             next_char = self.source_file.read(1)
             token = self.eval_next_char(next_char)
-            if token == '':
+            if token == '': # Instead of EOF returns empty string
                 return "$"
             if token is not None:
                 return token
@@ -49,4 +56,9 @@ class Scanner :
 
     def handle_panic_mode(self, prev_state, text):
         pass
+
+@dataclass
+class Token:
+    token_type: TokenType
+    lexim: str
 

@@ -3,6 +3,7 @@ from enum import Enum
 from string import ascii_letters, digits, whitespace, printable
 from typing import List, Union, Optional
 
+KEYWORDS = ['break', 'continue', 'void', 'else', 'if', 'return', 'while', 'main']
 
 class TokenType(Enum):
     NUM = 0
@@ -38,10 +39,10 @@ counter = iter(range(1000000))
 
 class State(Enum):
 
-    def __init__(self, id, is_final, is_lookahead, tokenType=None):
+    def __init__(self, id, is_final, is_lookahead, token_type=None):
         self.is_final = is_final
         self.is_lookahead = is_lookahead
-        self.tokenType = tokenType
+        self.token_type = token_type
 
     INITIAL_STATE = (next(counter), False, False)
 
@@ -71,7 +72,7 @@ class State(Enum):
     FINAL_SLASH_STAR_COMMENT_STATE = (next(counter), True, False, TokenType.COMMENT)
 
     # Whitespace state
-    FINAL_WHITESPACE_STATE = (next(counter), True, False)
+    FINAL_WHITESPACE_STATE = (next(counter), True, False, TokenType.WHITESPACE)
 
     # EOF state
     FINAL_EOF_STATE = (next(counter), True, False, TokenType.EOF)
