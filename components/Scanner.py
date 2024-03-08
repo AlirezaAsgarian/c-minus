@@ -7,13 +7,13 @@ from components.State import State, TokenType, KEYWORDS
 
 class Scanner :
 
-
     def __init__(self, filepath):
+        self.last_char = None
         self.current_state = State.INITIAL_STATE
         self.buffer = ""
         self.source_file = open(filepath, "r")
         self.symbols = copy(KEYWORDS)
-
+        self.lineno = 1
 
     def eval_next_char(self, next_char):
         prev_state = self.current_state
@@ -44,12 +44,16 @@ class Scanner :
         return None
 
     def move_file_cursor_to_previous_char(self):
-        self.source_file.seek(self.source_file.tell() - 1)
+        self.source_file.seek(self.source_file.tell() - 2)
+        self.last_char = self.source_file.read(1)
 
     def get_next_token(self):
         while True:
             next_char = self.source_file.read(1)
+            self.last_char = next_char
             token = self.eval_next_char(next_char)
+            if self.last_char == '\n':
+                self.lineno = self.lineno + 1
             if token == '': # Instead of EOF returns empty string
                 return "$"
             if token is not None:
@@ -65,5 +69,5 @@ class Scanner :
 @dataclass
 class Token:
     token_type: TokenType
-    lexim: str
+    lexeme: str
 

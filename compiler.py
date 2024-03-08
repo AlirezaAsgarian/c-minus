@@ -27,7 +27,8 @@ if __name__ == '__main__':
         if (token.token_type != TokenType.WHITESPACE):
             print(i)
             print(token.token_type, end="")
-            print(token.lexim)
+            print(scanner.lineno, end="")
+            print(token.lexeme)
         if token == "$":
             break
 
