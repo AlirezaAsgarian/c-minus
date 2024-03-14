@@ -1,11 +1,11 @@
 from copy import copy
 from dataclasses import dataclass
 
-from components.ScannerDfa import ScannerDfa
-from components.State import State, TokenType, KEYWORDS
+from components.ScannerDfa import *
+from components.State import *
 
 
-class Scanner :
+class Scanner:
 
     def __init__(self, filepath):
         self.last_char = None
@@ -14,17 +14,25 @@ class Scanner :
         self.source_file = open(filepath, "r")
         self.symbols = copy(KEYWORDS)
         self.lineno = 1
+        self.errors = []
 
     def eval_next_char(self, next_char):
         prev_state = self.current_state
         self.current_state = ScannerDfa.get_next_state(prev_state, next_char)
 
-        if self.current_state == 'error':
+        self.buffer = self.buffer + next_char
+        # print(next_char, self.current_state)
+
+        if type(self.current_state) is LexicalError:
+            error = self.current_state
             text = self.buffer
+            if error is LexicalError.UNCLOSED_COMMENT:
+                if len(text) > 7:
+                    text = text[:7] + "..."
+            self.errors.append(Error(self.lineno, text, error.value))
             self.reset()
             return self.handle_panic_mode(prev_state, text)
 
-        self.buffer = self.buffer + next_char
         if self.current_state.is_final:  # State is final
             result_state = self.current_state
             if result_state.is_lookahead:
@@ -34,13 +42,13 @@ class Scanner :
                 result = self.buffer
             self.reset()
 
-            if(result_state.token_type == TokenType.ID):
-                if not self.symbols.__contains__(result):
-                    self.symbols.append(copy(result)) # Add to symbol tables
-                if KEYWORDS.__contains__(result):
-                    return Token(TokenType.KEYWORD, result)
+            if result_state.token_type == TokenType.ID:
+                if result not in self.symbols:
+                    self.symbols.append(copy(result))  # Add to symbol tables
+                if result in KEYWORDS:
+                    return Token(self.lineno, TokenType.KEYWORD, result)
 
-            return Token(result_state.token_type, result)
+            return Token(self.lineno, result_state.token_type, result)
         return None
 
     def move_file_cursor_to_previous_char(self):
@@ -66,8 +74,16 @@ class Scanner :
     def handle_panic_mode(self, prev_state, text):
         pass
 
+
 @dataclass
 class Token:
+    lineno: int
     token_type: TokenType
     lexeme: str
 
+
+@dataclass
+class Error:
+    lineno: int
+    buffer: str
+    message: str
