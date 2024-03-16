@@ -22,10 +22,6 @@ class Scanner:
 
             dfa_state = dfa.current_state
 
-            print(current_token, dfa_state, self.file_reader.file.tell())
-
-            # __import__("time").sleep(1)
-
             if type(dfa_state) is LexicalError:
                 error = dfa_state
                 invalid_chars = current_token
@@ -38,7 +34,6 @@ class Scanner:
                 if dfa_state.is_lookahead:
                     current_token = current_token[:-1]
                     self.file_reader.back_one_char()
-                    print("BACKK")
 
                 token = Token(lineno, dfa_state.token_type, current_token)
 
@@ -66,18 +61,20 @@ class FileReader:
 
     def __init__(self, file):
         self.file = file
+        self.content = file.read()
+        self.ptr = 0
         self.lineno = 1
 
     def read_one_char(self):
-        char = self.file.read(1)
+        if self.ptr >= len(self.content): return ''
+        char = self.content[self.ptr]
+        self.ptr += 1
         if char == '\n': self.lineno += 1
         return char
 
     def back_one_char(self):
-        ptr = self.file.tell() - 1
-        self.file.seek(ptr)
-        self.lineno -= self.file.read(1) == '\n'
-        self.file.seek(ptr)
+        self.ptr -= 1
+        self.lineno -= self.content[self.ptr] == '\n'
 
 
 @dataclass

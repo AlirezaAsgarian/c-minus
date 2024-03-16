@@ -10,7 +10,7 @@ class ScannerDfa:
 
     states = {
         State.START: {
-            Pattern.EOF: State.FINAL_EOF_STATE,
+            Pattern.EOF: State.EOF_FINAL,
             Pattern.DIGIT: State.NUM_CANDIDATE,
             Pattern.SLASH: State.SLASH_VISITED,
             Pattern.STAR: State.STAR_VISITED,
@@ -43,17 +43,17 @@ class ScannerDfa:
         State.LINECOMMENT_OPENED: {
             Pattern.NEWLINE: State.LINECOMMENT_FINAL,
             Pattern.EOF: State.LINECOMMENT_FINAL,
-            Pattern.ALL_VALID: State.LINECOMMENT_OPENED
+            Pattern.ALL: State.LINECOMMENT_OPENED
         },
         State.BLOCKCOMMENT_OPENED: {
             Pattern.STAR: State.BLOCKCOMMENT_END_CANDIDATE,
             Pattern.EOF: LexicalError.UNCLOSED_COMMENT,
-            Pattern.ALL_VALID: State.BLOCKCOMMENT_OPENED
+            Pattern.ALL: State.BLOCKCOMMENT_OPENED
         },
         State.BLOCKCOMMENT_END_CANDIDATE: {
             Pattern.STAR: State.BLOCKCOMMENT_END_CANDIDATE,
             Pattern.SLASH: State.BLOCKCOMMENT_FINAL,
-            Pattern.ALL_VALID: State.BLOCKCOMMENT_OPENED
+            Pattern.ALL: State.BLOCKCOMMENT_OPENED
         }
     }
 

@@ -25,9 +25,9 @@ class Pattern:
     NEWLINE = r'\n'
     EOF = r'\Z'
     ALL_VALID = '|'.join((LETTER, DIGIT, SYMBOLS, SLASH, WHITESPACE, EOF))
+    ALL = r'.'
 
 
-# use auto() ?
 class State(Enum):
 
     def __init__(self, id, token_type=None, is_lookahead=False):
@@ -68,7 +68,7 @@ class State(Enum):
     WHITESPACE_FINAL = (auto(), TokenType.WHITESPACE)
 
     # EOF state
-    FINAL_EOF_STATE = (auto(), TokenType.EOF)
+    EOF_FINAL = (auto(), TokenType.EOF)
 
 
 class LexicalError(Enum):

@@ -7,7 +7,6 @@ from components.Scanner import *
 from components.State import *
 
 if __name__ == '__main__':
-    # file_path = "testcases/T08/input.txt"
     file_path = "input.txt"
 
     scanner = Scanner(open(file_path))
