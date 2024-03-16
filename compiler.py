@@ -3,13 +3,14 @@ C-minus Compiler
 by Alireza Asgarian 400105133
 and Alireza Mosallanezhad 400108944
 '''
-from components.Scanner import Scanner
-from components.State import TokenType
+from components.Scanner import *
+from components.State import *
 
 if __name__ == '__main__':
-    filePath = "samples_p1/T02/input.txt"
+    # file_path = "testcases/T08/input.txt"
+    file_path = "input.txt"
 
-    scanner = Scanner(filePath)
+    scanner = Scanner(open(file_path))
     tokens = []
 
     while True:
@@ -18,8 +19,9 @@ if __name__ == '__main__':
         elif token.token_type not in (TokenType.WHITESPACE, TokenType.COMMENT):
             tokens.append(token)
 
+    symbol_table = scanner.symbols
     with open("symbol_table.txt", "w") as f:
-        for idx, symbol in enumerate(scanner.symbols):
+        for idx, symbol in enumerate(symbol_table):
             f.write(f"{idx + 1}.\t{symbol}\n")
 
     with open("tokens.txt", "w") as f:

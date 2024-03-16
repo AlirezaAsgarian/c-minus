@@ -1,4 +1,3 @@
-from copy import copy
 from dataclasses import dataclass
 
 from components.ScannerDfa import *
@@ -7,72 +6,78 @@ from components.State import *
 
 class Scanner:
 
-    def __init__(self, filepath):
-        self.last_char = None
-        self.current_state = State.INITIAL_STATE
-        self.buffer = ""
-        self.source_file = open(filepath, "r")
-        self.symbols = copy(KEYWORDS)
-        self.lineno = 1
+    def __init__(self, source_file):
+        self.file_reader = FileReader(source_file)
+        self.symbols = KEYWORDS[:]
         self.errors = []
 
-    def eval_next_char(self, next_char):
-        prev_state = self.current_state
-        self.current_state = ScannerDfa.get_next_state(prev_state, next_char)
+    def read_token(self):
+        lineno = self.file_reader.lineno
+        dfa = ScannerDfa()
+        current_token = ""
+        while True:
+            char = self.file_reader.read_one_char()
+            current_token += char
+            dfa.read_char(char)
 
-        self.buffer = self.buffer + next_char
-        # print(next_char, self.current_state)
+            dfa_state = dfa.current_state
 
-        if type(self.current_state) is LexicalError:
-            error = self.current_state
-            text = self.buffer
-            if error is LexicalError.UNCLOSED_COMMENT:
-                if len(text) > 7:
-                    text = text[:7] + "..."
-            self.errors.append(Error(self.lineno, text, error.value))
-            self.reset()
-            return self.handle_panic_mode(prev_state, text)
+            print(current_token, dfa_state, self.file_reader.file.tell())
 
-        if self.current_state.is_final:  # State is final
-            result_state = self.current_state
-            if result_state.is_lookahead:
-                result = self.buffer[:-1]
-                self.move_file_cursor_to_previous_char()
-            else:
-                result = self.buffer
-            self.reset()
+            # __import__("time").sleep(1)
 
-            if result_state.token_type == TokenType.ID:
-                if result not in self.symbols:
-                    self.symbols.append(copy(result))  # Add to symbol tables
-                if result in KEYWORDS:
-                    return Token(self.lineno, TokenType.KEYWORD, result)
+            if type(dfa_state) is LexicalError:
+                error = dfa_state
+                invalid_chars = current_token
+                if error is LexicalError.UNCLOSED_COMMENT:
+                    if len(invalid_chars) > 7:
+                        invalid_chars = invalid_chars[:7] + "..."
+                return Error(lineno, invalid_chars, error.value)
 
-            return Token(self.lineno, result_state.token_type, result)
-        return None
+            elif dfa_state.token_type is not None:
+                if dfa_state.is_lookahead:
+                    current_token = current_token[:-1]
+                    self.file_reader.back_one_char()
+                    print("BACKK")
 
-    def move_file_cursor_to_previous_char(self):
-        self.source_file.seek(self.source_file.tell() - 2)
-        self.last_char = self.source_file.read(1)
+                token = Token(lineno, dfa_state.token_type, current_token)
+
+                if dfa_state.token_type == TokenType.ID:
+                    if current_token in KEYWORDS:
+                        token.token_type = TokenType.KEYWORD
+                    elif current_token not in self.symbols:
+                        self.symbols.append(current_token)
+
+                return token
 
     def get_next_token(self):
         while True:
-            next_char = self.source_file.read(1)
-            self.last_char = next_char
-            token = self.eval_next_char(next_char)
-            if self.last_char == '\n':
-                self.lineno = self.lineno + 1
-            if token == '': # Instead of EOF returns empty string
-                return "$"
-            if token is not None:
-                return token
-
-    def reset(self):
-        self.current_state = State.INITIAL_STATE
-        self.buffer = ""
+            token_or_error = self.read_token()
+            if type(token_or_error) is Error:
+                self.errors.append(token_or_error)
+            else:
+                return token_or_error
 
     def handle_panic_mode(self, prev_state, text):
         pass
+
+
+class FileReader:
+
+    def __init__(self, file):
+        self.file = file
+        self.lineno = 1
+
+    def read_one_char(self):
+        char = self.file.read(1)
+        if char == '\n': self.lineno += 1
+        return char
+
+    def back_one_char(self):
+        ptr = self.file.tell() - 1
+        self.file.seek(ptr)
+        self.lineno -= self.file.read(1) == '\n'
+        self.file.seek(ptr)
 
 
 @dataclass
