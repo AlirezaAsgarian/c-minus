@@ -3,8 +3,8 @@ C-minus Compiler
 by Alireza Asgarian 400105133
 and Alireza Mosallanezhad 400108944
 '''
-from components.Scanner import *
-from components.State import *
+from components.scanner.Scanner import *
+from components.scanner.State import *
 
 if __name__ == '__main__':
     file_path = "input.txt"

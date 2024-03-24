@@ -1,6 +1,6 @@
 import re
 
-from components.State import *
+from components.scanner.State import *
 
 
 class ScannerDfa:

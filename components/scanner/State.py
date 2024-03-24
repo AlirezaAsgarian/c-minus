@@ -1,6 +1,19 @@
 from enum import Enum, auto
 
-KEYWORDS = ['if', 'else', 'void', 'int', 'for', 'break', 'return', 'endif']
+
+class Keywords(Enum):
+    IF = 'if'
+    ELSE = 'else'
+    VOID = 'void'
+    INT = 'int'
+    FOR = 'for'
+    BREAK = 'break'
+    RETURN = 'return'
+    ENDIF = 'endif'
+
+
+KEYWORDS = [keyword.value for keyword in Keywords]
+EOF_VALUE = "$"
 
 
 class TokenType(Enum):

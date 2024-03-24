@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from components.ScannerDfa import *
-from components.State import *
+from components.scanner.ScannerDfa import *
+from components.scanner.State import *
 
 
 class Scanner:
@@ -22,20 +22,23 @@ class Scanner:
 
             dfa_state = dfa.current_state
 
+            if dfa_state == State.EOF_FINAL:
+                return Token(TokenType.EOF, EOF_VALUE, lineno)
+
             if type(dfa_state) is LexicalError:
                 error = dfa_state
                 invalid_chars = current_token
                 if error is LexicalError.UNCLOSED_COMMENT:
                     if len(invalid_chars) > 7:
                         invalid_chars = invalid_chars[:7] + "..."
-                return Error(lineno, invalid_chars, error.value)
+                return Error(invalid_chars, error.value, lineno)
 
             elif dfa_state.token_type is not None:
                 if dfa_state.is_lookahead:
                     current_token = current_token[:-1]
                     self.file_reader.back_one_char()
 
-                token = Token(lineno, dfa_state.token_type, current_token)
+                token = Token(dfa_state.token_type, current_token, lineno)
 
                 if dfa_state.token_type == TokenType.ID:
                     if current_token in KEYWORDS:
@@ -52,9 +55,6 @@ class Scanner:
                 self.errors.append(token_or_error)
             else:
                 return token_or_error
-
-    def handle_panic_mode(self, prev_state, text):
-        pass
 
 
 class FileReader:
@@ -79,13 +79,13 @@ class FileReader:
 
 @dataclass
 class Token:
-    lineno: int
     token_type: TokenType
     lexeme: str
+    lineno: int = 0
 
 
 @dataclass
 class Error:
-    lineno: int
     buffer: str
     message: str
+    lineno: int
