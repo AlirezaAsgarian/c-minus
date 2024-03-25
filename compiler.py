@@ -5,11 +5,16 @@ and Alireza Mosallanezhad 400108944
 '''
 from components.scanner.Scanner import *
 from components.scanner.State import *
+from components.parser.Parser import grammer_rules, Parser
+from components.parser.NonTerminal import NonTerminal
+
 
 if __name__ == '__main__':
     file_path = "input.txt"
 
     scanner = Scanner(open(file_path))
+    parser = Parser(scanner)
+    parser.parse()
     tokens = []
 
     while True:

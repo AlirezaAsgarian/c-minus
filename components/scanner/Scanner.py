@@ -23,7 +23,7 @@ class Scanner:
             dfa_state = dfa.current_state
 
             if dfa_state == State.EOF_FINAL:
-                return Token(TokenType.EOF, EOF_VALUE, lineno)
+                return Token(lineno, TokenType.EOF, EOF_VALUE)
 
             if type(dfa_state) is LexicalError:
                 error = dfa_state
@@ -31,14 +31,14 @@ class Scanner:
                 if error is LexicalError.UNCLOSED_COMMENT:
                     if len(invalid_chars) > 7:
                         invalid_chars = invalid_chars[:7] + "..."
-                return Error(invalid_chars, error.value, lineno)
+                return Error(lineno, invalid_chars, error.value)
 
             elif dfa_state.token_type is not None:
                 if dfa_state.is_lookahead:
                     current_token = current_token[:-1]
                     self.file_reader.back_one_char()
 
-                token = Token(dfa_state.token_type, current_token, lineno)
+                token = Token(lineno, dfa_state.token_type, current_token)
 
                 if dfa_state.token_type == TokenType.ID:
                     if current_token in KEYWORDS:
@@ -79,13 +79,13 @@ class FileReader:
 
 @dataclass
 class Token:
+    lineno: int
     token_type: TokenType
     lexeme: str
-    lineno: int = 0
 
 
 @dataclass
 class Error:
+    lineno: int
     buffer: str
     message: str
-    lineno: int
