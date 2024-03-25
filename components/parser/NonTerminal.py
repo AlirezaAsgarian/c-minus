@@ -51,7 +51,7 @@ class NonTerminal(Enum):
     Type_specifier = (auto(), (k.INT.value, k.VOID.value), (TokenType.ID,))
     Params = (auto(), (k.INT.value, k.VOID.value), (CLOSED_PARENTHESIS,))
     Param_list = (auto(), (COMMA, EPSILON), (CLOSED_PARENTHESIS,))
-    PARAM = (auto(), (k.INT.value, k.VOID.value), (CLOSED_PARENTHESIS, COMMA))
+    Param = (auto(), (k.INT.value, k.VOID.value), (CLOSED_PARENTHESIS, COMMA))
     Param_prime = (auto(), (OPEN_BRACKET, EPSILON), (CLOSED_PARENTHESIS, COMMA))
     Compound_stmt = (auto(), (OPEN_CURLY_BRACKET,),
                      (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
