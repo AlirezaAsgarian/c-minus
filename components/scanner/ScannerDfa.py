@@ -30,7 +30,7 @@ class ScannerDfa:
         },
         State.STAR_VISITED: {
             Pattern.SLASH: LexicalError.UNMATCHED_COMMENT,
-            Pattern.ALL_VALID: State.SYMBOL_FINAL_LOOKAHEAD_NOT_MATCHED
+            Pattern.ALL: State.SYMBOL_FINAL_LOOKAHEAD_NOT_MATCHED
         },
         State.EQUAL_VISITED: {
             Pattern.EQUAL: State.SYMBOL_FINAL_LOOKAHEAD_MATCHED,
