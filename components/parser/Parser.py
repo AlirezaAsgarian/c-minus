@@ -1,5 +1,6 @@
+from anytree import Node
+
 from components.parser.NonTerminal import *
-from operator import sub
 from components.scanner.State import TokenType, Keywords
 
 
@@ -8,8 +9,8 @@ def without_epsilon(input):
 
 
 grammer_rules = {
-    NonTerminal.PROGRAM: {
-        without_epsilon(NonTerminal.DECLARATION_LIST.first): [NonTerminal.DECLARATION_LIST]
+    NonTerminal.Program: {
+        without_epsilon(NonTerminal.DECLARATION_LIST.first + NonTerminal.Program.follow): [NonTerminal.DECLARATION_LIST]
     },
     NonTerminal.DECLARATION_LIST: {
         NonTerminal.Declaration.first: [NonTerminal.Declaration, NonTerminal.DECLARATION_LIST]
@@ -26,10 +27,10 @@ grammer_rules = {
     },
     NonTerminal.Var_declaration_prime: {
         (SEMICOLON,): [SEMICOLON],
-        (OPEN_BRACKET,): [OPEN_BRACKET, TokenType.NUM, CLOSED_BRACKET]
+        (OPEN_BRACKET,): [OPEN_BRACKET, TokenType.NUM, CLOSED_BRACKET, SEMICOLON]
     },
     NonTerminal.Fun_declaration_prime: {
-        (OPEN_PARENTHESIS, ): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, NonTerminal.Compound_stmt]
+        (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, NonTerminal.Compound_stmt]
     },
     NonTerminal.Type_specifier: {
         (Keywords.INT.value,): [Keywords.INT.value],
@@ -49,17 +50,18 @@ grammer_rules = {
         (OPEN_BRACKET,): [OPEN_BRACKET, CLOSED_BRACKET]
     },
     NonTerminal.Compound_stmt: {
-        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, NonTerminal.DECLARATION_LIST, NonTerminal.Statement_list, CLOSED_CURLY_BRACKET]
+        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, NonTerminal.DECLARATION_LIST, NonTerminal.Statement_list,
+                                CLOSED_CURLY_BRACKET]
     },
     NonTerminal.Statement_list: {
         NonTerminal.Statement.first: [NonTerminal.Statement, NonTerminal.Statement_list]
     },
     NonTerminal.Statement: {
+        NonTerminal.Return_stmt.first: [NonTerminal.Return_stmt],
         NonTerminal.Expression_stmt.first: [NonTerminal.Expression_stmt],
         NonTerminal.Compound_stmt.first: [NonTerminal.Compound_stmt],
         NonTerminal.Selection_stmt.first: [NonTerminal.Selection_stmt],
-        NonTerminal.Iteration_stmt.first: [NonTerminal.Iteration_stmt],
-        NonTerminal.Return_stmt.first: [NonTerminal.Return_stmt]
+        NonTerminal.Iteration_stmt.first: [NonTerminal.Iteration_stmt]
     },
     NonTerminal.Expression_stmt: {
         NonTerminal.Expression.first: [NonTerminal.Expression, SEMICOLON],
@@ -67,14 +69,17 @@ grammer_rules = {
         (SEMICOLON,): [SEMICOLON]
     },
     NonTerminal.Selection_stmt: {
-        (Keywords.IF.value,): [Keywords.IF.value, OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS, NonTerminal.Statement, NonTerminal.Else_stmt]
+        (Keywords.IF.value,): [Keywords.IF.value, OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS,
+                               NonTerminal.Statement, NonTerminal.Else_stmt]
     },
     NonTerminal.Else_stmt: {
         (Keywords.ENDIF.value,): [Keywords.ENDIF.value],
         (Keywords.ELSE.value,): [Keywords.ELSE.value, NonTerminal.Statement, Keywords.ENDIF.value]
     },
     NonTerminal.Iteration_stmt: {
-        (Keywords.FOR.value,): [Keywords.FOR.value, OPEN_PARENTHESIS, NonTerminal.Expression, SEMICOLON, NonTerminal.Expression, SEMICOLON, NonTerminal.Expression, CLOSED_PARENTHESIS, NonTerminal.Statement]
+        (Keywords.FOR.value,): [Keywords.FOR.value, OPEN_PARENTHESIS, NonTerminal.Expression, SEMICOLON,
+                                NonTerminal.Expression, SEMICOLON, NonTerminal.Expression, CLOSED_PARENTHESIS,
+                                NonTerminal.Statement]
     },
     NonTerminal.Return_stmt: {
         (Keywords.RETURN.value,): [Keywords.RETURN.value, NonTerminal.Return_stmt_prime]
@@ -90,30 +95,36 @@ grammer_rules = {
     NonTerminal.B: {
         (EQUAL,): [EQUAL, NonTerminal.Expression],
         (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, CLOSED_BRACKET, NonTerminal.H],
-        without_epsilon(NonTerminal.Simple_expression_prime.first): [NonTerminal.Simple_expression_prime]
+        without_epsilon(NonTerminal.Simple_expression_prime.first + NonTerminal.B.follow): [
+            NonTerminal.Simple_expression_prime]
     },
     NonTerminal.H: {
         (EQUAL,): [EQUAL, NonTerminal.Expression],
-        without_epsilon(NonTerminal.G.first + NonTerminal.D.first + NonTerminal.C.first): [NonTerminal.G, NonTerminal.D, NonTerminal.C]
+        without_epsilon(NonTerminal.G.first + NonTerminal.D.first + NonTerminal.C.first + NonTerminal.H.follow): [
+            NonTerminal.G, NonTerminal.D, NonTerminal.C]
     },
     NonTerminal.Simple_expression_zegond: {
         NonTerminal.Additive_expression_zegond.first: [NonTerminal.Additive_expression_zegond, NonTerminal.C]
     },
     NonTerminal.Simple_expression_prime: {
-        without_epsilon(NonTerminal.Additive_expression_prime.first + NonTerminal.C.first): [NonTerminal.Additive_expression_prime, NonTerminal.C]
+        without_epsilon(
+            NonTerminal.Additive_expression_prime.first + NonTerminal.C.first + NonTerminal.Simple_expression_prime.follow): [
+            NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
-      NonTerminal.RELOP.first: [NonTerminal.RELOP, NonTerminal.Additive_expression]
+        NonTerminal.RELOP.first: [NonTerminal.RELOP, NonTerminal.Additive_expression]
     },
     NonTerminal.RELOP: {
         (LESS_THAN,): [LESS_THAN],
-        (EQUALITY_OPERATOR,): [EQUALITY_OPERATOR,]
+        (EQUALITY_OPERATOR,): [EQUALITY_OPERATOR, ]
     },
     NonTerminal.Additive_expression: {
         NonTerminal.Term.first: [NonTerminal.Term, NonTerminal.D]
     },
     NonTerminal.Additive_expression_prime: {
-        without_epsilon(NonTerminal.Term_prime.first + NonTerminal.D.first): [NonTerminal.Term_prime, NonTerminal.D]
+        without_epsilon(
+            NonTerminal.Term_prime.first + NonTerminal.D.first + NonTerminal.Additive_expression_prime.follow): [
+            NonTerminal.Term_prime, NonTerminal.D]
     },
     NonTerminal.Additive_expression_zegond: {
         NonTerminal.Term_zegond.first: [NonTerminal.Term_zegond, NonTerminal.D]
@@ -129,10 +140,11 @@ grammer_rules = {
         NonTerminal.Signed_factor.first: [NonTerminal.Signed_factor, NonTerminal.G]
     },
     NonTerminal.Term_prime: {
-        without_epsilon(NonTerminal.Signed_factor_prime.first + NonTerminal.G.first): [NonTerminal.Signed_factor_prime, NonTerminal.G]
+        without_epsilon(NonTerminal.Signed_factor_prime.first + NonTerminal.G.first + NonTerminal.Term_prime.follow): [
+            NonTerminal.Signed_factor_prime, NonTerminal.G]
     },
     NonTerminal.Term_zegond: {
-        NonTerminal.Signed_factor_zegond: [NonTerminal.Signed_factor_zegond, NonTerminal.G]
+        NonTerminal.Signed_factor_zegond.first: [NonTerminal.Signed_factor_zegond, NonTerminal.G]
     },
     NonTerminal.G: {
         (MULTIPLY_OPERATOR,): [MULTIPLY_OPERATOR, NonTerminal.Signed_factor, NonTerminal.G]
@@ -143,7 +155,8 @@ grammer_rules = {
         NonTerminal.Factor.first: [NonTerminal.Factor]
     },
     NonTerminal.Signed_factor_prime: {
-        without_epsilon(NonTerminal.Factor_prime.first): [NonTerminal.Factor_prime]
+        without_epsilon(NonTerminal.Factor_prime.first + NonTerminal.Signed_factor_prime.follow): [
+            NonTerminal.Factor_prime]
     },
     NonTerminal.Signed_factor_zegond: {
         (PLUS,): [PLUS, NonTerminal.Factor],
@@ -157,7 +170,7 @@ grammer_rules = {
     },
     NonTerminal.Var_call_prime: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Args, CLOSED_PARENTHESIS],
-        without_epsilon(NonTerminal.Var_prime.first): [NonTerminal.Var_prime]
+        without_epsilon(NonTerminal.Var_prime.first + NonTerminal.Var_call_prime.follow): [NonTerminal.Var_prime]
     },
     NonTerminal.Var_prime: {
         (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, CLOSED_BRACKET]
@@ -185,36 +198,72 @@ class Parser:
 
     def __init__(self, scanner):
         self.scanner = scanner
-        self.current_token = scanner.get_next_token()
+        self.current_token = None
+        self.errors = []
 
-    def parse(self, current_state=NonTerminal.PROGRAM, parent=None):
-        for first, rule in grammer_rules.get(current_state).items():
-            if self.is_current_token_in(first):
+    def parse_all(self):
+        root = Node(str(NonTerminal.Program.name))
+        self.get_next_token()
+        self.parse(NonTerminal.Program, root)
+        Node("$", root)
+        return root
+
+    def parse(self, current_state, current_node):
+        print(self.current_token.lineno, current_state.name, self.current_token.lexeme)
+        for possible_token, rule in grammer_rules.get(current_state).items():
+            # print(self.current_token, possible_token)
+            if self.is_current_token_in(possible_token):
+                # print("%s start %s" % (self.current_token.lineno, rule))
                 for var in rule:
+                    print("%s %s put %s" % (self.current_token.lineno, self.current_token.lexeme, var))
                     if isinstance(var, NonTerminal):
-                        self.match_non_terminal(var, current_state)
+                        node = Node(str(var.name.capitalize().replace('_', '-')), current_node)
+                        self.parse(var, node)
                     else:
-                        self.match_terminal(var)
+                        token_str = "(%s, %s)" % (self.current_token.token_type.name, self.current_token.lexeme)
+                        if self.is_current_token_in((var,)):
+                            Node(token_str, current_node)
+                            self.get_next_token()
+                        else:
+                            if self.is_current_token_in(current_state.follow):
+                                # current_node.parent = None  # remove expected but missing node
+                                self.errors.append("#%s : syntax error, missing %s"
+                                                   % (self.current_token.lineno,
+                                                      str(var).capitalize().replace('_', '-')))
+                                print(self.errors[-1])
+                            else:
+                                self.errors.append("#%s : syntax error, illegal %s" % (
+                                    self.current_token.lineno, self.current_token.lexeme))
+                                print(self.errors[-1])
+                                self.get_next_token()
+                                return
+                        # if self.match_terminal(var):
+                        #
+                        # else:
+                        #     # self.parse(var, node)
                 return
         if EPSILON in current_state.first and self.is_current_token_in(current_state.follow):
-            # This means we use epsilon rule here
+            print("saw EPS")
+            Node(EPSILON, current_node)
             return
-        # TODO: Handle errors
-
-    def match_non_terminal(self, var, current_state):
-        self.parse(var, current_state)
-
-    def match_terminal(self, var):
-        if self.current_token.lexeme == var or self.current_token.token_type == var:
-            self.current_token = self.get_next_token()
+        if self.is_current_token_in(current_state.follow):
+            current_node.parent = None  # remove expected but missing node
+            self.errors.append("#%s : syntax error, missing %s"
+                               % (self.current_token.lineno, current_state.name.capitalize().replace('_', '-')))
+            print(self.errors[-1])
         else:
-            "error dide shode!"
+            self.errors.append("#%s : syntax error, illegal %s"
+                               % (self.current_token.lineno, self.current_token.lexeme))
+            print(self.errors[-1])
+            self.get_next_token()
+            self.parse(current_state, current_node)
 
     def get_next_token(self):
         while True:
             next_token = self.scanner.get_next_token()
-            if next_token.token_type != TokenType.WHITESPACE:
-                return next_token
+            if next_token.token_type not in (TokenType.WHITESPACE, TokenType.COMMENT):
+                self.current_token = next_token
+                return
 
     def is_current_token_in(self, input_set):
         return self.current_token.lexeme in input_set or self.current_token.token_type in input_set

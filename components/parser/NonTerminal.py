@@ -7,8 +7,8 @@ EPSILON = 'epsilon'
 SEMICOLON = ";"
 OPEN_PARENTHESIS = "("
 CLOSED_PARENTHESIS = ")"
-OPEN_BRACKET = "("
-CLOSED_BRACKET = ")"
+OPEN_BRACKET = "["
+CLOSED_BRACKET = "]"
 OPEN_CURLY_BRACKET = "{"
 CLOSED_CURLY_BRACKET = "}"
 COMMA = ","
@@ -27,9 +27,9 @@ class NonTerminal(Enum):
         self.first = first
         self.follow = follow
 
-    PROGRAM = (auto(), (EPSILON, k.INT.value, k.VOID.value), (EOF_VALUE,))
+    Program = (auto(), (EPSILON, k.INT.value, k.VOID.value), (EOF_VALUE,))
     DECLARATION_LIST = (auto(), (EPSILON, k.INT.value, k.VOID.value),
-                        (EOF_VALUE, SEMICOLON, TokenType.ID, TokenType.NUM))
+                        (EOF_VALUE, SEMICOLON, TokenType.ID, TokenType.NUM, TokenType.KEYWORD, CLOSED_CURLY_BRACKET))
     Declaration = (auto(), (k.INT.value, k.VOID.value),
                    (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
                     OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.FOR.value, k.RETURN.value,
@@ -101,7 +101,7 @@ class NonTerminal(Enum):
     C = (auto(), (LESS_THAN, EQUALITY_OPERATOR, EPSILON), (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
     RELOP = (auto(), (LESS_THAN, EQUALITY_OPERATOR), (TokenType.ID, TokenType.NUM, OPEN_CURLY_BRACKET, PLUS, MINUS))
     Additive_expression = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, MINUS, PLUS),
-                           (SEMICOLON, CLOSED_BRACKET, CLOSED_CURLY_BRACKET, COMMA))
+                           (SEMICOLON, CLOSED_BRACKET, CLOSED_CURLY_BRACKET, CLOSED_PARENTHESIS, COMMA))
     Additive_expression_prime = (auto(), (OPEN_PARENTHESIS, PLUS, MINUS, MULTIPLY_OPERATOR, EPSILON),
                                  (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR))
     Additive_expression_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS, MINUS, PLUS),
