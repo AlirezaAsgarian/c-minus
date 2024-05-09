@@ -1,7 +1,6 @@
 from enum import Enum, auto
 
-from components.scanner.State import TokenType, EOF_VALUE
-from components.scanner.State import Keywords as k
+from components.scanner.State import TokenType
 
 EPSILON = 'epsilon'
 SEMICOLON = ";"
@@ -20,6 +19,106 @@ MULTIPLY_OPERATOR = '*'
 LESS_THAN = "<"
 GREATER_THAN = ">"
 
+grammer_terminals = [TokenType.ID, ';', '[', TokenType.NUM, ']', '(', ')', 'int', 'void', ',', '{', '}', 'break', 'if', 'endif', 'else', 'for', 'return', '=', '<', '==', '+', '-', '*']
+
+first_set_raw = '''Program − − − − − − − + + − − − − − − − − − − − − − − − +
+Declaration_list − − − − − − − + + − − − − − − − − − − − − − − − +
+Declaration − − − − − − − + + − − − − − − − − − − − − − − − −
+Declaration_initial − − − − − − − + + − − − − − − − − − − − − − − − −
+Declaration_prime − + + − − + − − − − − − − − − − − − − − − − − − −
+Var_declaration_prime − + + − − − − − − − − − − − − − − − − − − − − − −
+Fun_declaration_prime − − − − − + − − − − − − − − − − − − − − − − − − −
+Type_specifier − − − − − − − + + − − − − − − − − − − − − − − − −
+Params − − − − − − − + + − − − − − − − − − − − − − − − −
+Param_list − − − − − − − − − + − − − − − − − − − − − − − − +
+Param − − − − − − − + + − − − − − − − − − − − − − − − −
+Param_prime − − + − − − − − − − − − − − − − − − − − − − − − +
+Compound_stmt − − − − − − − − − − + − − − − − − − − − − − − − −
+Statement_list + + − + − + − − − − + − + + − − + + − − − + + − +
+Statement + + − + − + − − − − + − + + − − + + − − − + + − −
+Expression_stmt + + − + − + − − − − − − + − − − − − − − − + + − −
+Selection_stmt − − − − − − − − − − − − − + − − − − − − − − − − −
+Else_stmt − − − − − − − − − − − − − − + + − − − − − − − − −
+Iteration_stmt − − − − − − − − − − − − − − − − + − − − − − − − −
+Return_stmt − − − − − − − − − − − − − − − − − + − − − − − − −
+Return_stmt_prime + + − + − + − − − − − − − − − − − − − − − + + − −
+Expression + − − + − + − − − − − − − − − − − − − − − + + − −
+B − − + − − + − − − − − − − − − − − − + + + + + + +
+H − − − − − − − − − − − − − − − − − − + + + + + + +
+Simple_expression_zegond − − − + − + − − − − − − − − − − − − − − − + + − −
+Simple_expression_prime − − − − − + − − − − − − − − − − − − − + + + + + +
+C − − − − − − − − − − − − − − − − − − − + + − − − +
+Relop − − − − − − − − − − − − − − − − − − − + + − − − −
+Additive_expression + − − + − + − − − − − − − − − − − − − − − + + − −
+Additive_expression_prime − − − − − + − − − − − − − − − − − − − − − + + + +
+Additive_expression_zegond − − − + − + − − − − − − − − − − − − − − − + + − −
+D − − − − − − − − − − − − − − − − − − − − − + + − +
+Addop − − − − − − − − − − − − − − − − − − − − − + + − −
+Term + − − + − + − − − − − − − − − − − − − − − + + − −
+Term_prime − − − − − + − − − − − − − − − − − − − − − − − + +
+Term_zegond − − − + − + − − − − − − − − − − − − − − − + + − −
+G − − − − − − − − − − − − − − − − − − − − − − − + +
+Signed_factor + − − + − + − − − − − − − − − − − − − − − + + − −
+Signed_factor_prime − − − − − + − − − − − − − − − − − − − − − − − − +
+Signed_factor_zegond − − − + − + − − − − − − − − − − − − − − − + + − −
+Factor + − − + − + − − − − − − − − − − − − − − − − − − −
+Var_call_prime − − + − − + − − − − − − − − − − − − − − − − − − +
+Var_prime − − + − − − − − − − − − − − − − − − − − − − − − +
+Factor_prime − − − − − + − − − − − − − − − − − − − − − − − − +
+Factor_zegond − − − + − + − − − − − − − − − − − − − − − − − − −
+Args + − − + − + − − − − − − − − − − − − − − − + + − +
+Arg_list + − − + − + − − − − − − − − − − − − − − − + + − −
+Arg_list_prime − − − − − − − − − + − − − − − − − − − − − − − − +'''
+
+follow_set_raw = '''Program − − − − − − − − − − − − − − − − − − − − − − − − +
+Declaration_list + + − + − + − − − − + + + + − − + + − − − + + − +
+Declaration + + − + − + − + + − + + + + − − + + − − − + + − +
+Declaration_initial − + + − − + + − − + − − − − − − − − − − − − − − −
+Declaration_prime + + − + − + − + + − + + + + − − + + − − − + + − +
+Var_declaration_prime + + − + − + − + + − + + + + − − + + − − − + + − +
+Fun_declaration_prime + + − + − + − + + − + + + + − − + + − − − + + − +
+Type_specifier + − − − − − − − − − − − − − − − − − − − − − − − −
+Params − − − − − − + − − − − − − − − − − − − − − − − − −
+Param_list − − − − − − + − − − − − − − − − − − − − − − − − −
+Param − − − − − − + − − + − − − − − − − − − − − − − − −
+Param_prime − − − − − − + − − + − − − − − − − − − − − − − − −
+Compound_stmt + + − + − + − + + − + + + + + + + + − − − + + − +
+Statement_list − − − − − − − − − − − + − − − − − − − − − − − − −
+Statement + + − + − + − − − − + + + + + + + + − − − + + − −
+Expression_stmt + + − + − + − − − − + + + + + + + + − − − + + − −
+Selection_stmt + + − + − + − − − − + + + + + + + + − − − + + − −
+Else_stmt + + − + − + − − − − + + + + + + + + − − − + + − −
+Iteration_stmt + + − + − + − − − − + + + + + + + + − − − + + − −
+Return_stmt + + − + − + − − − − + + + + + + + + − − − + + − −
+Return_stmt_prime + + − + − + − − − − + + + + + + + + − − − + + − −
+Expression − + − − + − + − − + − − − − − − − − − − − − − − −
+B − + − − + − + − − + − − − − − − − − − − − − − − −
+H − + − − + − + − − + − − − − − − − − − − − − − − −
+Simple_expression_zegond − + − − + − + − − + − − − − − − − − − − − − − − −
+Simple_expression_prime − + − − + − + − − + − − − − − − − − − − − − − − −
+C − + − − + − + − − + − − − − − − − − − − − − − − −
+Relop + − − + − + − − − − − − − − − − − − − − − + + − −
+Additive_expression − + − − + − + − − + − − − − − − − − − − − − − − −
+Additive_expression_prime − + − − + − + − − + − − − − − − − − − + + − − − −
+Additive_expression_zegond − + − − + − + − − + − − − − − − − − − + + − − − −
+D − + − − + − + − − + − − − − − − − − − + + − − − −
+Addop + − − + − + − − − − − − − − − − − − − − − + + − −
+Term − + − − + − + − − + − − − − − − − − − + + + + − −
+Term_prime − + − − + − + − − + − − − − − − − − − + + + + − −
+Term_zegond − + − − + − + − − + − − − − − − − − − + + + + − −
+G − + − − + − + − − + − − − − − − − − − + + + + − −
+Signed_factor − + − − + − + − − + − − − − − − − − − + + + + + −
+Signed_factor_prime − + − − + − + − − + − − − − − − − − − + + + + + −
+Signed_factor_zegond − + − − + − + − − + − − − − − − − − − + + + + + −
+Factor − + − − + − + − − + − − − − − − − − − + + + + + −
+Var_call_prime − + − − + − + − − + − − − − − − − − − + + + + + −
+Var_prime − + − − + − + − − + − − − − − − − − − + + + + + −
+Factor_prime − + − − + − + − − + − − − − − − − − − + + + + + −
+Factor_zegond − + − − + − + − − + − − − − − − − − − + + + + + −
+Args − − − − − − + − − − − − − − − − − − − − − − − − −
+Arg_list − − − − − − + − − − − − − − − − − − − − − − − − −
+Arg_list_prime − − − − − − + − − − − − − − − − − − − − − − − − −'''
+
 
 class NonTerminal(Enum):
 
@@ -27,120 +126,68 @@ class NonTerminal(Enum):
         self.first = first
         self.follow = follow
 
-    Program = (auto(), (EPSILON, k.INT.value, k.VOID.value), (EOF_VALUE,))
-    DECLARATION_LIST = (auto(), (EPSILON, k.INT.value, k.VOID.value),
-                        (EOF_VALUE, SEMICOLON, TokenType.ID, TokenType.NUM, TokenType.KEYWORD, CLOSED_CURLY_BRACKET))
-    Declaration = (auto(), (k.INT.value, k.VOID.value),
-                   (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
-                    OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.FOR.value, k.RETURN.value,
-                    MINUS, PLUS, EOF_VALUE))
-    Declaration_initial = (auto(), (k.INT.value, k.VOID.value),
-                           (SEMICOLON, OPEN_BRACKET, OPEN_PARENTHESIS, CLOSED_PARENTHESIS, COMMA))
-    Declaration_prime = (auto(), (SEMICOLON, OPEN_BRACKET, OPEN_PARENTHESIS),
-                         (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
-                          OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.FOR.value,
-                          k.RETURN.value, PLUS, MINUS, EOF_VALUE))
-    Var_declaration_prime = (auto(), (SEMICOLON, OPEN_BRACKET),
-                             (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
-                              OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.FOR.value,
-                              k.RETURN.value, PLUS, MINUS, EOF_VALUE))
-    Fun_declaration_prime = (auto(), (OPEN_PARENTHESIS,),
-                             (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
-                              OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.FOR.value,
-                              k.RETURN.value, PLUS, MINUS, EOF_VALUE))
-    Type_specifier = (auto(), (k.INT.value, k.VOID.value), (TokenType.ID,))
-    Params = (auto(), (k.INT.value, k.VOID.value), (CLOSED_PARENTHESIS,))
-    Param_list = (auto(), (COMMA, EPSILON), (CLOSED_PARENTHESIS,))
-    Param = (auto(), (k.INT.value, k.VOID.value), (CLOSED_PARENTHESIS, COMMA))
-    Param_prime = (auto(), (OPEN_BRACKET, EPSILON), (CLOSED_PARENTHESIS, COMMA))
-    Compound_stmt = (auto(), (OPEN_CURLY_BRACKET,),
-                     (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.INT.value, k.VOID.value,
-                      OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value,
-                      k.FOR.value, k.RETURN.value, PLUS, MINUS, EOF_VALUE))
-    Statement_list = (auto(),
-                      (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, COMMA, k.BREAK.value, k.IF.value,
-                       k.FOR.value, k.RETURN.value, MINUS, PLUS, EPSILON),
-                      (CLOSED_CURLY_BRACKET,))
-    Statement = (auto(), (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET, k.BREAK.value,
-                          k.IF.value, k.FOR.value, k.RETURN.value, PLUS, MINUS)
-                 , (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET,
-                    k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value, k.RETURN.value, PLUS, MINUS))
-    Expression_stmt = (auto(), (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, k.BREAK.value, PLUS, MINUS),
-                       (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET,
-                        CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value,
-                        k.RETURN.value, PLUS, MINUS))
-    Selection_stmt = (auto(), (k.IF.value,),
-                      (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET,
-                       CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value,
-                       k.RETURN.value, PLUS, MINUS))
-    Else_stmt = (auto(), (k.ENDIF.value, k.ELSE.value),
-                 (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET,
-                  k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value, k.RETURN.value, PLUS, MINUS))
-    Iteration_stmt = (auto(), (k.FOR.value,),
-                      (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET,
-                       CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value,
-                       k.RETURN.value, PLUS, MINUS))
-    Return_stmt = (auto(), (k.RETURN.value,),
-                   (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET, CLOSED_CURLY_BRACKET,
-                    k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value, k.RETURN.value, PLUS, MINUS))
-    Return_stmt_prime = (auto(), (TokenType.ID, COMMA, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                         (TokenType.ID, SEMICOLON, TokenType.NUM, OPEN_PARENTHESIS, OPEN_CURLY_BRACKET,
-                          CLOSED_CURLY_BRACKET, k.BREAK.value, k.IF.value, k.ENDIF.value, k.ELSE.value, k.FOR.value,
-                          k.RETURN.value, PLUS, MINUS))
-    Expression = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                  (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    B = (auto(), (OPEN_BRACKET, OPEN_PARENTHESIS, EQUAL, k.RETURN.value, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                  MULTIPLY_OPERATOR, EPSILON),
-         (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    H = (auto(), (EQUAL, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS, MULTIPLY_OPERATOR, EPSILON),
-         (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    Simple_expression_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                                (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    Simple_expression_prime = (auto(), (OPEN_PARENTHESIS, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS, MULTIPLY_OPERATOR,
-                                        EPSILON), (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    C = (auto(), (LESS_THAN, EQUALITY_OPERATOR, EPSILON), (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    RELOP = (auto(), (LESS_THAN, EQUALITY_OPERATOR), (TokenType.ID, TokenType.NUM, OPEN_CURLY_BRACKET, PLUS, MINUS))
-    Additive_expression = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, MINUS, PLUS),
-                           (SEMICOLON, CLOSED_BRACKET, CLOSED_CURLY_BRACKET, CLOSED_PARENTHESIS, COMMA))
-    Additive_expression_prime = (auto(), (OPEN_PARENTHESIS, PLUS, MINUS, MULTIPLY_OPERATOR, EPSILON),
-                                 (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR))
-    Additive_expression_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS, MINUS, PLUS),
-                                  (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR))
-    D = (auto(), (PLUS, MINUS, EPSILON),
-         (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR))
-    Addop = (auto(), (PLUS, MINUS), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS))
-    Term = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-            (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS))
-    Term_prime = (auto(), (OPEN_PARENTHESIS, MULTIPLY_OPERATOR, EPSILON),
-                  (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS))
-    Term_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                   (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS))
-    G = (auto(), (MULTIPLY_OPERATOR, EPSILON),
-         (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS))
-    Signed_factor = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                     (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                      MULTIPLY_OPERATOR))
-    Signed_factor_prime = (auto(), (OPEN_PARENTHESIS, EPSILON),
-                           (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS,
-                            MINUS, MULTIPLY_OPERATOR))
-    Signed_factor_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS),
-                            (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS,
-                             MINUS, MULTIPLY_OPERATOR))
-    Factor = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS),
-              (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-               MULTIPLY_OPERATOR))
-    Var_call_prime = (auto(), (OPEN_BRACKET, OPEN_PARENTHESIS, EPSILON),
-                      (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                       MULTIPLY_OPERATOR))
-    Var_prime = (auto(), (OPEN_BRACKET, EPSILON),
-                 (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                  MULTIPLY_OPERATOR))
-    Factor_prime = (auto(), (OPEN_PARENTHESIS, EPSILON),
-                    (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                     MULTIPLY_OPERATOR))
-    Factor_zegond = (auto(), (TokenType.NUM, OPEN_PARENTHESIS),
-                     (SEMICOLON, CLOSED_BRACKET, CLOSED_PARENTHESIS, COMMA, LESS_THAN, EQUALITY_OPERATOR, PLUS, MINUS,
-                      MULTIPLY_OPERATOR))
-    Args = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, PLUS, MINUS, EPSILON), (CLOSED_PARENTHESIS,))
-    Arg_list = (auto(), (TokenType.ID, TokenType.NUM, OPEN_PARENTHESIS, MINUS, PLUS), (CLOSED_PARENTHESIS,))
-    Arg_list_prime = (auto(), (COMMA, EPSILON), (CLOSED_PARENTHESIS,))
+    Program = (auto(), [], [])
+    Declaration_list = (auto(), [], [])
+    Declaration = (auto(), [], [])
+    Declaration_initial = (auto(), [], [])
+    Declaration_prime = (auto(), [], [])
+    Var_declaration_prime = (auto(), [], [])
+    Fun_declaration_prime = (auto(), [], [])
+    Type_specifier = (auto(), [], [])
+    Params = (auto(), [], [])
+    Param_list = (auto(), [], [])
+    Param = (auto(), [], [])
+    Param_prime = (auto(), [], [])
+    Compound_stmt = (auto(), [], [])
+    Statement_list = (auto(), [], [])
+    Statement = (auto(), [], [])
+    Expression_stmt = (auto(), [], [])
+    Selection_stmt = (auto(), [], [])
+    Else_stmt = (auto(), [], [])
+    Iteration_stmt = (auto(), [], [])
+    Return_stmt = (auto(), [], [])
+    Return_stmt_prime = (auto(), [], [])
+    Expression = (auto(), [], [])
+    B = (auto(), [], [])
+    H = (auto(), [], [])
+    Simple_expression_zegond = (auto(), [], [])
+    Simple_expression_prime = (auto(), [], [])
+    C = (auto(), [], [])
+    Relop = (auto(), [], [])
+    Additive_expression = (auto(), [], [])
+    Additive_expression_prime = (auto(), [], [])
+    Additive_expression_zegond = (auto(), [], [])
+    D = (auto(), [], [])
+    Addop = (auto(), [], [])
+    Term = (auto(), [], [])
+    Term_prime = (auto(), [], [])
+    Term_zegond = (auto(), [], [])
+    G = (auto(), [], [])
+    Signed_factor = (auto(), [], [])
+    Signed_factor_prime = (auto(), [], [])
+    Signed_factor_zegond = (auto(), [], [])
+    Factor = (auto(), [], [])
+    Var_call_prime = (auto(), [], [])
+    Var_prime = (auto(), [], [])
+    Factor_prime = (auto(), [], [])
+    Factor_zegond = (auto(), [], [])
+    Args = (auto(), [], [])
+    Arg_list = (auto(), [], [])
+    Arg_list_prime = (auto(), [], [])
+
+
+for line in first_set_raw.splitlines():
+    vals = line.split()
+    name = vals[0]
+    for i, x in enumerate(grammer_terminals + [EPSILON]):
+        if vals[i + 1] == '+':
+            NonTerminal[name].first.append(x)
+    NonTerminal[name].first = tuple(NonTerminal[name].first)
+
+for line in follow_set_raw.splitlines():
+    vals = line.split()
+    name = vals[0]
+    for i, x in enumerate(grammer_terminals + ['$']):
+        if vals[i + 1] == '+':
+            NonTerminal[name].follow.append(x)
+    NonTerminal[name].follow = tuple(NonTerminal[name].follow)

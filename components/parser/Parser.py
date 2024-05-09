@@ -10,10 +10,10 @@ def without_epsilon(input):
 
 grammer_rules = {
     NonTerminal.Program: {
-        without_epsilon(NonTerminal.DECLARATION_LIST.first + NonTerminal.Program.follow): [NonTerminal.DECLARATION_LIST]
+        without_epsilon(NonTerminal.Declaration_list.first + NonTerminal.Program.follow): [NonTerminal.Declaration_list]
     },
-    NonTerminal.DECLARATION_LIST: {
-        NonTerminal.Declaration.first: [NonTerminal.Declaration, NonTerminal.DECLARATION_LIST]
+    NonTerminal.Declaration_list: {
+        NonTerminal.Declaration.first: [NonTerminal.Declaration, NonTerminal.Declaration_list]
     },
     NonTerminal.Declaration: {
         NonTerminal.Declaration_initial.first: [NonTerminal.Declaration_initial, NonTerminal.Declaration_prime]
@@ -50,7 +50,7 @@ grammer_rules = {
         (OPEN_BRACKET,): [OPEN_BRACKET, CLOSED_BRACKET]
     },
     NonTerminal.Compound_stmt: {
-        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, NonTerminal.DECLARATION_LIST, NonTerminal.Statement_list,
+        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, NonTerminal.Declaration_list, NonTerminal.Statement_list,
                                 CLOSED_CURLY_BRACKET]
     },
     NonTerminal.Statement_list: {
@@ -112,9 +112,9 @@ grammer_rules = {
             NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
-        NonTerminal.RELOP.first: [NonTerminal.RELOP, NonTerminal.Additive_expression]
+        NonTerminal.Relop.first: [NonTerminal.Relop, NonTerminal.Additive_expression]
     },
-    NonTerminal.RELOP: {
+    NonTerminal.Relop: {
         (LESS_THAN,): [LESS_THAN],
         (EQUALITY_OPERATOR,): [EQUALITY_OPERATOR, ]
     },
@@ -217,7 +217,7 @@ class Parser:
                 for var in rule:
                     print("%s %s put %s" % (self.current_token.lineno, self.current_token.lexeme, var))
                     if isinstance(var, NonTerminal):
-                        node = Node(str(var.name.capitalize().replace('_', '-')), current_node)
+                        node = Node(str(var.name.replace('_', '-')), current_node)
                         self.parse(var, node)
                     else:
                         token_str = "(%s, %s)" % (self.current_token.token_type.name, self.current_token.lexeme)
@@ -229,7 +229,7 @@ class Parser:
                                 # current_node.parent = None  # remove expected but missing node
                                 self.errors.append("#%s : syntax error, missing %s"
                                                    % (self.current_token.lineno,
-                                                      str(var).capitalize().replace('_', '-')))
+                                                      str(var).replace('_', '-')))
                                 print(self.errors[-1])
                             else:
                                 self.errors.append("#%s : syntax error, illegal %s" % (
@@ -249,7 +249,7 @@ class Parser:
         if self.is_current_token_in(current_state.follow):
             current_node.parent = None  # remove expected but missing node
             self.errors.append("#%s : syntax error, missing %s"
-                               % (self.current_token.lineno, current_state.name.capitalize().replace('_', '-')))
+                               % (self.current_token.lineno, current_state.name.replace('_', '-')))
             print(self.errors[-1])
         else:
             self.errors.append("#%s : syntax error, illegal %s"
