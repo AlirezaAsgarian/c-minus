@@ -200,6 +200,7 @@ def get_lexeme_or_type(token):
 
 unexpected_eof = False
 
+
 class Parser:
 
     def __init__(self, scanner):
@@ -218,9 +219,7 @@ class Parser:
         global unexpected_eof
         print(self.current_token.lineno, current_state.name, self.current_token.lexeme)
         for possible_token, rule in grammer_rules.get(current_state).items():
-            # print(self.current_token, possible_token)
             if self.is_current_token_in(possible_token):
-                # print("%s start %s" % (self.current_token.lineno, rule))
                 for var in rule:
                     print("%s %s put %s" % (self.current_token.lineno, self.current_token.lexeme, var))
                     if isinstance(var, NonTerminal):
@@ -228,48 +227,26 @@ class Parser:
                         self.parse(var, node)
                         if unexpected_eof: return
                     else:
-                        token_str = "(%s, %s)" % (self.current_token.token_type.name, self.current_token.lexeme)
-                        if self.is_current_token_in((var,)):
-                            Node(token_str, current_node)
-                            self.get_next_token()
-                        else:
-                            if self.is_current_token_in(current_state.follow):
-                                # current_node.parent = None  # remove expected but missing node
-                                self.errors.append("#%s : syntax error, missing %s"
-                                                   % (self.current_token.lineno,
-                                                      str(var).replace('_', '-')))
-                                print(self.errors[-1])
-                            else:
-                                if self.current_token.token_type == TokenType.EOF:
-                                    self.errors.append("#%s : syntax error, Unexpected EOF" % self.current_token.lineno)
-                                    print(self.errors[-1])
-                                    unexpected_eof = True
-                                    return
-                                self.errors.append("#%s : syntax error, illegal %s" % (
-                                    self.current_token.lineno, get_lexeme_or_type(self.current_token)))
-                                print(self.errors[-1])
-                                self.get_next_token()
-                                return
+                        while True:
+                            is_matched_or_skip = self.match_token(var, current_state, current_node)
+                            if unexpected_eof: return
+                            if is_matched_or_skip: break
                 return
         if EPSILON in current_state.first and self.is_current_token_in(current_state.follow):
-            print("saw EPS")
+            print("used Epsilon")
             Node(EPSILON, current_node)
             return
+
         if self.is_current_token_in(current_state.follow):
-            current_node.parent = None  # remove expected but missing node
-            self.errors.append("#%s : syntax error, missing %s"
-                               % (self.current_token.lineno, current_state.name.replace('_', '-')))
-            print(self.errors[-1])
+            current_node.parent = None  # remove expected but missing current node
+            self.add_error_missing_token(current_state.name)
         else:
             if self.current_token.token_type == TokenType.EOF:
                 current_node.parent = None
-                self.errors.append("#%s : syntax error, Unexpected EOF" % self.current_token.lineno)
-                print(self.errors[-1])
+                self.add_error_unexpected_eof()
                 unexpected_eof = True
                 return
-            self.errors.append("#%s : syntax error, illegal %s"
-                               % (self.current_token.lineno, get_lexeme_or_type(self.current_token)))
-            print(self.errors[-1])
+            self.add_error_illegal_token()
             self.get_next_token()
             self.parse(current_state, current_node)
 
@@ -280,5 +257,39 @@ class Parser:
                 self.current_token = next_token
                 return
 
+    def match_token(self, expected_token, current_state, current_node):
+        global unexpected_eof
+        if self.is_current_token_in((expected_token,)):
+            token_str = "(%s, %s)" % (self.current_token.token_type.name, self.current_token.lexeme)
+            Node(token_str, current_node)
+            self.get_next_token()
+            return True
+        else:
+            if self.is_current_token_in(current_state.follow):
+                self.add_error_missing_token(str(expected_token))
+                return True
+            else:
+                if self.current_token.token_type == TokenType.EOF:
+                    self.add_error_unexpected_eof()
+                    unexpected_eof = True
+                    return False
+                self.add_error_illegal_token()
+                self.get_next_token()
+                return False
+
     def is_current_token_in(self, input_set):
         return self.current_token.lexeme in input_set or self.current_token.token_type in input_set
+
+    def add_error_missing_token(self, token):
+        self.errors.append("#%s : syntax error, missing %s"
+                           % (self.current_token.lineno, token.replace('_', '-')))
+        print(self.errors[-1])
+
+    def add_error_illegal_token(self):
+        self.errors.append("#%s : syntax error, illegal %s"
+                               % (self.current_token.lineno, get_lexeme_or_type(self.current_token)))
+        print(self.errors[-1])
+
+    def add_error_unexpected_eof(self):
+        self.errors.append("#%s : syntax error, Unexpected EOF" % self.current_token.lineno)
+        print(self.errors[-1])
