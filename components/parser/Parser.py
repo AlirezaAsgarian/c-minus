@@ -197,6 +197,9 @@ grammer_rules = {
 def get_lexeme_or_type(token):
     return token.token_type.name if token.token_type in (TokenType.ID, TokenType.NUM) else token.lexeme
 
+def get_terminal_or_type(terminal):
+    return str(terminal.name) if isinstance(terminal, TokenType) else str(terminal)
+
 
 unexpected_eof = False
 
@@ -265,17 +268,12 @@ class Parser:
             self.get_next_token()
             return True
         else:
-            if self.is_current_token_in(current_state.follow):
-                self.add_error_missing_token(str(expected_token))
-                return True
-            else:
-                if self.current_token.token_type == TokenType.EOF:
-                    self.add_error_unexpected_eof()
-                    unexpected_eof = True
-                    return False
-                self.add_error_illegal_token()
-                self.get_next_token()
+            if self.current_token.token_type == TokenType.EOF:
+                self.add_error_unexpected_eof()
+                unexpected_eof = True
                 return False
+            self.add_error_missing_token(get_terminal_or_type(expected_token))
+            return True
 
     def is_current_token_in(self, input_set):
         return self.current_token.lexeme in input_set or self.current_token.token_type in input_set
