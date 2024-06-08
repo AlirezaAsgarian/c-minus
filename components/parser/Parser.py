@@ -1,7 +1,8 @@
 from anytree import Node
 
+from components.codegen.CodeGenerator import *
 from components.parser.NonTerminal import *
-from components.scanner.State import TokenType, Keywords
+from components.scanner.State import Keywords
 
 
 def without_epsilon(input):
@@ -19,15 +20,15 @@ grammer_rules = {
         NonTerminal.Declaration_initial.first: [NonTerminal.Declaration_initial, NonTerminal.Declaration_prime]
     },
     NonTerminal.Declaration_initial: {
-        NonTerminal.Type_specifier.first: [NonTerminal.Type_specifier, TokenType.ID]
+        NonTerminal.Type_specifier.first: [Action.push_id, NonTerminal.Type_specifier, Action.push_id, TokenType.ID]
     },
     NonTerminal.Declaration_prime: {
         NonTerminal.Fun_declaration_prime.first: [NonTerminal.Fun_declaration_prime],
         NonTerminal.Var_declaration_prime.first: [NonTerminal.Var_declaration_prime]
     },
     NonTerminal.Var_declaration_prime: {
-        (SEMICOLON,): [SEMICOLON],
-        (OPEN_BRACKET,): [OPEN_BRACKET, TokenType.NUM, CLOSED_BRACKET, SEMICOLON]
+        (SEMICOLON,): [Action.declare_int, SEMICOLON],
+        (OPEN_BRACKET,): [OPEN_BRACKET, Action.push_id, TokenType.NUM, CLOSED_BRACKET, Action.declare_array, SEMICOLON]
     },
     NonTerminal.Fun_declaration_prime: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, NonTerminal.Compound_stmt]
@@ -50,8 +51,9 @@ grammer_rules = {
         (OPEN_BRACKET,): [OPEN_BRACKET, CLOSED_BRACKET]
     },
     NonTerminal.Compound_stmt: {
-        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, NonTerminal.Declaration_list, NonTerminal.Statement_list,
-                                CLOSED_CURLY_BRACKET]
+        (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, Action.open_block, NonTerminal.Declaration_list,
+                                NonTerminal.Statement_list,
+                                Action.close_block, CLOSED_CURLY_BRACKET]
     },
     NonTerminal.Statement_list: {
         NonTerminal.Statement.first: [NonTerminal.Statement, NonTerminal.Statement_list]
@@ -90,10 +92,10 @@ grammer_rules = {
     },
     NonTerminal.Expression: {
         NonTerminal.Simple_expression_zegond.first: [NonTerminal.Simple_expression_zegond],
-        (TokenType.ID,): [TokenType.ID, NonTerminal.B]
+        (TokenType.ID,): [Action.push_id, TokenType.ID, NonTerminal.B]
     },
     NonTerminal.B: {
-        (EQUAL,): [EQUAL, NonTerminal.Expression],
+        (EQUAL,): [EQUAL, NonTerminal.Expression, Action.assign],
         (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, CLOSED_BRACKET, NonTerminal.H],
         without_epsilon(NonTerminal.Simple_expression_prime.first + NonTerminal.B.follow): [
             NonTerminal.Simple_expression_prime]
@@ -180,7 +182,7 @@ grammer_rules = {
     },
     NonTerminal.Factor_zegond: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS],
-        (TokenType.NUM,): [TokenType.NUM]
+        (TokenType.NUM,): [Action.push_stack, TokenType.NUM]
     },
     NonTerminal.Args: {
         NonTerminal.Arg_list.first: [NonTerminal.Arg_list]
@@ -197,6 +199,7 @@ grammer_rules = {
 def get_lexeme_or_type(token):
     return token.token_type.name if token.token_type in (TokenType.ID, TokenType.NUM) else token.lexeme
 
+
 def get_terminal_or_type(terminal):
     return str(terminal.name) if isinstance(terminal, TokenType) else str(terminal)
 
@@ -210,6 +213,7 @@ class Parser:
         self.scanner = scanner
         self.current_token = None
         self.errors = []
+        self.code_generator = CodeGenerator()
 
     def parse_all(self):
         root = Node(str(NonTerminal.Program.name))
@@ -220,12 +224,12 @@ class Parser:
 
     def parse(self, current_state, current_node):
         global unexpected_eof
-        print(self.current_token.lineno, current_state.name, self.current_token.lexeme)
         for possible_token, rule in grammer_rules.get(current_state).items():
             if self.is_current_token_in(possible_token):
                 for var in rule:
-                    print("%s %s put %s" % (self.current_token.lineno, self.current_token.lexeme, var))
-                    if isinstance(var, NonTerminal):
+                    if isinstance(var, Action):
+                        self.code_generator.codegen(var, self.current_token)
+                    elif isinstance(var, NonTerminal):
                         node = Node(str(var.name.replace('_', '-')), current_node)
                         self.parse(var, node)
                         if unexpected_eof: return
@@ -236,7 +240,6 @@ class Parser:
                             if is_matched_or_skip: break
                 return
         if EPSILON in current_state.first and self.is_current_token_in(current_state.follow):
-            print("used Epsilon")
             Node(EPSILON, current_node)
             return
 
@@ -285,7 +288,7 @@ class Parser:
 
     def add_error_illegal_token(self):
         self.errors.append("#%s : syntax error, illegal %s"
-                               % (self.current_token.lineno, get_lexeme_or_type(self.current_token)))
+                           % (self.current_token.lineno, get_lexeme_or_type(self.current_token)))
         print(self.errors[-1])
 
     def add_error_unexpected_eof(self):
