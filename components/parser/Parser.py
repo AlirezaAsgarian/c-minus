@@ -31,7 +31,7 @@ grammer_rules = {
         (OPEN_BRACKET,): [OPEN_BRACKET, Action.push_id, TokenType.NUM, CLOSED_BRACKET, Action.declare_array, SEMICOLON]
     },
     NonTerminal.Fun_declaration_prime: {
-        (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, NonTerminal.Compound_stmt]
+        (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, Action.begin_function, NonTerminal.Compound_stmt, Action.end_function]
     },
     NonTerminal.Type_specifier: {
         (Keywords.INT.value,): [Keywords.INT.value],
@@ -111,7 +111,7 @@ grammer_rules = {
     NonTerminal.Simple_expression_prime: {
         without_epsilon(
             NonTerminal.Additive_expression_prime.first + NonTerminal.C.first + NonTerminal.Simple_expression_prime.follow): [
-            NonTerminal.Additive_expression_prime, NonTerminal.C]
+            Action.push_stack, NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
         NonTerminal.Relop.first: [NonTerminal.Relop, NonTerminal.Additive_expression]
@@ -132,7 +132,7 @@ grammer_rules = {
         NonTerminal.Term_zegond.first: [NonTerminal.Term_zegond, NonTerminal.D]
     },
     NonTerminal.D: {
-        NonTerminal.Addop.first: [NonTerminal.Addop, NonTerminal.Term, NonTerminal.D]
+        NonTerminal.Addop.first: [Action.push_id, NonTerminal.Addop, NonTerminal.Term, Action.addsub, NonTerminal.D]
     },
     NonTerminal.Addop: {
         (PLUS,): [PLUS],
@@ -149,7 +149,7 @@ grammer_rules = {
         NonTerminal.Signed_factor_zegond.first: [NonTerminal.Signed_factor_zegond, NonTerminal.G]
     },
     NonTerminal.G: {
-        (MULTIPLY_OPERATOR,): [MULTIPLY_OPERATOR, NonTerminal.Signed_factor, NonTerminal.G]
+        (MULTIPLY_OPERATOR,): [MULTIPLY_OPERATOR, NonTerminal.Signed_factor, Action.multiply, NonTerminal.G]
     },
     NonTerminal.Signed_factor: {
         (PLUS,): [PLUS, NonTerminal.Factor],
@@ -167,7 +167,7 @@ grammer_rules = {
     },
     NonTerminal.Factor: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS],
-        (TokenType.ID,): [TokenType.ID, NonTerminal.Var_call_prime],
+        (TokenType.ID,): [Action.push_id, Action.push_stack, TokenType.ID, NonTerminal.Var_call_prime],
         (TokenType.NUM,): [TokenType.NUM]
     },
     NonTerminal.Var_call_prime: {
@@ -182,7 +182,7 @@ grammer_rules = {
     },
     NonTerminal.Factor_zegond: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS],
-        (TokenType.NUM,): [Action.push_stack, TokenType.NUM]
+        (TokenType.NUM,): [Action.push_id, Action.push_stack, TokenType.NUM]
     },
     NonTerminal.Args: {
         NonTerminal.Arg_list.first: [NonTerminal.Arg_list]
