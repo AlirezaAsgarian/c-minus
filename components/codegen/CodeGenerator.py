@@ -114,15 +114,40 @@ class CodeGenerator:
                     symbol = self.global_table.get_symbol(token.lexeme)
                     self.append_code_push(direct(symbol.address))
 
+        elif action == Action.pop_stack:
+            self.append_code_pop()
+
         elif action == Action.multiply:
             self.append_code_pop()
             self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
             self.append_code((Code.MULT, indirect(SP), indirect(TEMP), indirect(TEMP)))
+
         elif action == Action.addsub:
             op = self.semantic_stack.pop().lexeme
             self.append_code_pop()
             self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
             self.append_code(((Code.ADD if op == "+" else Code.SUB), indirect(TEMP), indirect(SP), indirect(TEMP)))
+
+        elif action == Action.relop:  # optimize with addsub and multiply
+            op = self.semantic_stack.pop().lexeme
+            self.append_code_pop()
+            self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
+            self.append_code(((Code.LT if op == "<" else Code.EQ), indirect(TEMP), indirect(SP), indirect(TEMP)))
+
+        elif action == Action.skip_and_save:
+            lineno = len(self.codes)
+            self.semantic_stack.append(lineno)
+            self.append_code(())
+
+        elif action == Action.fix_skipped2_jpf:
+            fixlineno = self.semantic_stack.pop(-2)
+            lineno = len(self.codes)
+            self.codes[fixlineno] = (Code.JPF, indirect(SP), lineno)
+
+        elif action == Action.fix_skipped_jp:
+            fixlineno = self.semantic_stack.pop()
+            lineno = len(self.codes)
+            self.codes[fixlineno] = (Code.JP, lineno)
 
 
 def constant(value):
@@ -159,9 +184,14 @@ class Action(Enum):
     declare_int = auto()
     declare_array = auto()
     push_stack = auto()
+    pop_stack = auto()
     assign = auto()
     multiply = auto()
     addsub = auto()
+    relop = auto()
+    skip_and_save = auto()
+    fix_skipped2_jpf = auto()
+    fix_skipped_jp = auto()
 
 
 class Code(Enum):

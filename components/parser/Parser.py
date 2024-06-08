@@ -72,7 +72,8 @@ grammer_rules = {
     },
     NonTerminal.Selection_stmt: {
         (Keywords.IF.value,): [Keywords.IF.value, OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS,
-                               NonTerminal.Statement, NonTerminal.Else_stmt]
+                               Action.pop_stack, Action.skip_and_save, NonTerminal.Statement, Action.skip_and_save,
+                               Action.fix_skipped2_jpf, NonTerminal.Else_stmt, Action.fix_skipped_jp]
     },
     NonTerminal.Else_stmt: {
         (Keywords.ENDIF.value,): [Keywords.ENDIF.value],
@@ -114,7 +115,7 @@ grammer_rules = {
             Action.push_stack, NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
-        NonTerminal.Relop.first: [NonTerminal.Relop, NonTerminal.Additive_expression]
+        NonTerminal.Relop.first: [Action.push_id, NonTerminal.Relop, NonTerminal.Additive_expression, Action.relop]
     },
     NonTerminal.Relop: {
         (LESS_THAN,): [LESS_THAN],
