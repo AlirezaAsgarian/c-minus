@@ -11,7 +11,16 @@ def without_epsilon(input):
 
 grammer_rules = {
     NonTerminal.Program: {
-        without_epsilon(NonTerminal.Declaration_list.first + NonTerminal.Program.follow): [NonTerminal.Declaration_list]
+        without_epsilon(NonTerminal.Declaration_list.first + NonTerminal.Program.follow): [
+            Action.push_lineno,
+            Action.placeholder_line, Action.placeholder_line,  # push return-address = end of program lineno
+            Action.push_fp_value,
+            Action.placeholder_line,  # set fp = current sp
+            Action.placeholder_line,  # jp to main
+            Action.return_code_block,
+            NonTerminal.Declaration_list,
+            Action.call_main
+            ]
     },
     NonTerminal.Declaration_list: {
         NonTerminal.Declaration.first: [NonTerminal.Declaration, NonTerminal.Declaration_list]
@@ -31,24 +40,28 @@ grammer_rules = {
         (OPEN_BRACKET,): [OPEN_BRACKET, Action.push_id, TokenType.NUM, CLOSED_BRACKET, Action.declare_array, SEMICOLON]
     },
     NonTerminal.Fun_declaration_prime: {
-        (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS, Action.begin_function, NonTerminal.Compound_stmt, Action.end_function]
+        (OPEN_PARENTHESIS,): [Action.register_function, OPEN_PARENTHESIS, NonTerminal.Params, CLOSED_PARENTHESIS,
+                              Action.begin_function, NonTerminal.Compound_stmt,
+                              Action.function_return, Action.end_function]
     },
     NonTerminal.Type_specifier: {
         (Keywords.INT.value,): [Keywords.INT.value],
         (Keywords.VOID.value,): [Keywords.VOID.value]
     },
     NonTerminal.Params: {
-        (Keywords.INT.value,): [Keywords.INT.value, TokenType.ID, NonTerminal.Param_prime, NonTerminal.Param_list],
+        (Keywords.INT.value,): [Action.push_id, Keywords.INT.value, Action.push_id, Action.add_function_param,
+                                TokenType.ID, NonTerminal.Param_prime, NonTerminal.Param_list],
         (Keywords.VOID.value,): [Keywords.VOID.value]
     },
     NonTerminal.Param_list: {
         (COMMA,): [COMMA, NonTerminal.Param, NonTerminal.Param_list]
     },
     NonTerminal.Param: {
-        NonTerminal.Declaration_initial.first: [NonTerminal.Declaration_initial, NonTerminal.Param_prime]
+        NonTerminal.Declaration_initial.first: [NonTerminal.Declaration_initial, Action.add_function_param,
+                                                NonTerminal.Param_prime]
     },
     NonTerminal.Param_prime: {
-        (OPEN_BRACKET,): [OPEN_BRACKET, CLOSED_BRACKET]
+        (OPEN_BRACKET,): [OPEN_BRACKET, CLOSED_BRACKET, Action.param_type_to_array]
     },
     NonTerminal.Compound_stmt: {
         (OPEN_CURLY_BRACKET,): [OPEN_CURLY_BRACKET, Action.open_block, NonTerminal.Declaration_list,
@@ -72,8 +85,9 @@ grammer_rules = {
     },
     NonTerminal.Selection_stmt: {
         (Keywords.IF.value,): [Keywords.IF.value, OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS,
-                               Action.pop_stack, Action.skip_and_save, NonTerminal.Statement, Action.skip_and_save,
-                               Action.fix_skipped2_jpf, NonTerminal.Else_stmt, Action.fix_skipped_jp]
+                               Action.pop_stack, Action.push_lineno, Action.placeholder_line,
+                               NonTerminal.Statement, Action.push_lineno, Action.placeholder_line,
+                               Action.jpf_from_skipped2, NonTerminal.Else_stmt, Action.jp_from_skipped1]
     },
     NonTerminal.Else_stmt: {
         (Keywords.ENDIF.value,): [Keywords.ENDIF.value],
@@ -81,14 +95,21 @@ grammer_rules = {
     },
     NonTerminal.Iteration_stmt: {
         (Keywords.FOR.value,): [Keywords.FOR.value, OPEN_PARENTHESIS, NonTerminal.Expression, SEMICOLON,
-                                NonTerminal.Expression, SEMICOLON, NonTerminal.Expression, CLOSED_PARENTHESIS,
-                                NonTerminal.Statement]
+                                Action.push_lineno, NonTerminal.Expression, SEMICOLON,
+                                Action.pop_stack,
+                                Action.push_lineno, Action.placeholder_line,
+                                Action.push_lineno, Action.placeholder_line,
+                                Action.push_lineno,
+                                NonTerminal.Expression, Action.jp_to_skipped4, CLOSED_PARENTHESIS,
+                                Action.jp_from_skipped2,
+                                NonTerminal.Statement,
+                                Action.jp_to_skipped1, Action.jpf_from_skipped1]
     },
     NonTerminal.Return_stmt: {
-        (Keywords.RETURN.value,): [Keywords.RETURN.value, NonTerminal.Return_stmt_prime]
+        (Keywords.RETURN.value,): [Keywords.RETURN.value, NonTerminal.Return_stmt_prime, Action.function_return]
     },
     NonTerminal.Return_stmt_prime: {
-        NonTerminal.Expression.first: [NonTerminal.Expression, SEMICOLON],
+        NonTerminal.Expression.first: [NonTerminal.Expression, Action.set_function_return_value, SEMICOLON],
         (SEMICOLON,): [SEMICOLON]
     },
     NonTerminal.Expression: {
@@ -112,7 +133,7 @@ grammer_rules = {
     NonTerminal.Simple_expression_prime: {
         without_epsilon(
             NonTerminal.Additive_expression_prime.first + NonTerminal.C.first + NonTerminal.Simple_expression_prime.follow): [
-            Action.push_stack, NonTerminal.Additive_expression_prime, NonTerminal.C]
+            NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
         NonTerminal.Relop.first: [Action.push_id, NonTerminal.Relop, NonTerminal.Additive_expression, Action.relop]
@@ -168,8 +189,8 @@ grammer_rules = {
     },
     NonTerminal.Factor: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS],
-        (TokenType.ID,): [Action.push_id, Action.push_stack, TokenType.ID, NonTerminal.Var_call_prime],
-        (TokenType.NUM,): [TokenType.NUM]
+        (TokenType.ID,): [Action.push_id, TokenType.ID, NonTerminal.Var_call_prime],
+        (TokenType.NUM,): [Action.push_id, TokenType.NUM]
     },
     NonTerminal.Var_call_prime: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Args, CLOSED_PARENTHESIS],
@@ -186,7 +207,11 @@ grammer_rules = {
         (TokenType.NUM,): [Action.push_id, Action.push_stack, TokenType.NUM]
     },
     NonTerminal.Args: {
-        NonTerminal.Arg_list.first: [NonTerminal.Arg_list]
+        NonTerminal.Arg_list.first: [Action.push_lineno,
+                                     Action.placeholder_line,  # push return_value_placeholder
+                                     Action.placeholder_line, Action.placeholder_line,  # push return_address
+                                     Action.push_fp_value,
+                                     NonTerminal.Arg_list, Action.call_function]
     },
     NonTerminal.Arg_list: {
         NonTerminal.Expression.first: [NonTerminal.Expression, NonTerminal.Arg_list_prime]
@@ -194,6 +219,11 @@ grammer_rules = {
     NonTerminal.Arg_list_prime: {
         (COMMA,): [COMMA, NonTerminal.Expression, NonTerminal.Arg_list_prime]
     }
+}
+
+epsilon_rule_actions = {
+    NonTerminal.Factor_prime: [Action.push_stack],
+    NonTerminal.Var_prime: [Action.push_stack]
 }
 
 
@@ -242,6 +272,9 @@ class Parser:
                 return
         if EPSILON in current_state.first and self.is_current_token_in(current_state.follow):
             Node(EPSILON, current_node)
+            if current_state in epsilon_rule_actions:
+                for action in epsilon_rule_actions[current_state]:
+                    self.code_generator.codegen(action, None)
             return
 
         if self.is_current_token_in(current_state.follow):
