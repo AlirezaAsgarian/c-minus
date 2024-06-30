@@ -10,8 +10,8 @@ class SymbolTable:
         self.offset = starting_offset  # can be optimized when popping from stack
         self.table_stack = []
 
-    def add_symbol(self, symbol, size=None):
-        self.table_stack[-1][symbol] = Variable(self.offset, size)
+    def add_symbol(self, symbol, size=None, is_param=False):
+        self.table_stack[-1][symbol] = Variable(self.offset, size, is_param)
         self.offset += 4 if size is None else 4 * size
 
     def get_symbol(self, symbol):
@@ -52,6 +52,7 @@ class CodeGenerator:
 
     def set_code_push(self, lineno, value):
         if value is not None:
+            print(lineno, value)
             self.codes[lineno] = (Code.ASSIGN, value, indirect(SP))
             lineno += 1
         self.codes[lineno] = (Code.ADD, direct(SP), constant(4), direct(SP))
@@ -65,13 +66,7 @@ class CodeGenerator:
     def append_code_pop(self):
         self.append_code((Code.SUB, direct(SP), constant(4), direct(SP)))
 
-    def get_symbol(self, symbol):
-        in_function = self.function_table.get_symbol(symbol)
-        if in_function is not None: return in_function
-        return self.global_table.get_symbol(symbol)
-
     def codegen(self, action, token):
-        print(action, token)
 
         if action == Action.push_id:
             self.semantic_stack.append(token)
@@ -86,7 +81,7 @@ class CodeGenerator:
         elif action == Action.add_function_param:
             param_name = self.semantic_stack.pop().lexeme
             param_type = self.semantic_stack.pop().lexeme
-            self.functions[self.current_function].parameters.append((param_name, param_type))
+            self.functions[self.current_function].parameters.append([param_name, param_type])
 
         elif action == Action.param_type_to_array:
             self.functions[self.current_function].parameters[-1][1] = "array"
@@ -138,7 +133,7 @@ class CodeGenerator:
             self.function_table = SymbolTable(0)
             self.function_table.push_empty_stack()
             for param_name, param_type in self.functions[self.current_function].parameters:
-                self.function_table.add_symbol(param_name, 1)
+                self.function_table.add_symbol(param_name, 1 if param_type == "array" else None, True)
 
         elif action == Action.end_function:
             self.function_table = None
@@ -161,13 +156,14 @@ class CodeGenerator:
                 self.append_code_push(None)
 
         elif action == Action.declare_array:
-            symbol_size = self.semantic_stack.pop().lexeme
+            symbol_size = int(self.semantic_stack.pop().lexeme)
             symbol_name = self.semantic_stack.pop().lexeme
             symbol_type = self.semantic_stack.pop().lexeme
             if symbol_type != "int":
                 pass
             (self.global_table if self.function_table is None else self.function_table).add_symbol(symbol_name,
                                                                                                    symbol_size)
+            self.append_code((Code.ADD, direct(SP), constant(symbol_size * 4), direct(SP)))
 
         elif action == Action.assign:
             symbol_name = self.semantic_stack.pop().lexeme
@@ -188,10 +184,10 @@ class CodeGenerator:
                 symbol = self.function_table.get_symbol(token.lexeme)
                 if symbol is not None:
                     self.append_code((Code.ADD, direct(FP), constant(symbol.address), direct(TEMP)))
-                    self.append_code_push(indirect(TEMP))
+                    self.append_code_push(indirect(TEMP) if symbol.size is None else direct(TEMP))
                 else:
                     symbol = self.global_table.get_symbol(token.lexeme)
-                    self.append_code_push(direct(symbol.address))
+                    self.append_code_push(direct(symbol.address) if symbol.size is None else constant(symbol.address))
 
         elif action == Action.pop_stack:
             self.append_code_pop()
@@ -212,6 +208,11 @@ class CodeGenerator:
             self.append_code_pop()
             self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
             self.append_code(((Code.LT if op == "<" else Code.EQ), indirect(TEMP), indirect(SP), indirect(TEMP)))
+
+        elif action == Action.negate:
+            self.append_code_pop()
+            self.append_code((Code.SUB, constant(0), indirect(SP), indirect(SP)))
+            self.append_code_push(None)
 
         elif action == Action.placeholder_line:
             self.append_code(())
@@ -251,6 +252,35 @@ class CodeGenerator:
         elif action == Action.push_fp_value:
             self.append_code_push(direct(FP))
 
+        elif action == Action.push_array_index_address:
+            token = self.semantic_stack.pop()
+            symbol = self.function_table.get_symbol(token.lexeme)
+            self.append_code_pop()
+            self.append_code((Code.MULT, indirect(SP), constant(4), indirect(SP)))
+            if symbol is not None:
+                self.append_code((Code.ADD, direct(FP), constant(symbol.address), direct(TEMP)))
+                self.append_code((Code.ADD,
+                                  (indirect if symbol.is_param else direct)(TEMP), indirect(SP), direct(TEMP)))
+                self.append_code_push(direct(TEMP))
+            else:
+                symbol = self.global_table.get_symbol(token.lexeme)
+                self.append_code((Code.ADD, constant(symbol.address), indirect(SP), direct(TEMP)))
+                self.append_code_push(direct(TEMP))
+
+        elif action == Action.array_assign:
+            self.append_code_pop()
+            self.append_code_pop()
+            self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
+            self.append_code_push(None)
+            self.append_code((Code.ASSIGN, indirect(SP), indirect(TEMP)))
+            self.append_code_pop()
+
+        elif action == Action.push_address_value:
+            self.append_code_pop()
+            self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
+            self.append_code_push(indirect(TEMP))
+
+
 def constant(value):
     return f"#{value}"
 
@@ -267,6 +297,7 @@ def indirect(value):
 class Variable:
     address: int
     size: int
+    is_param: bool
 
 
 @dataclass
@@ -290,6 +321,7 @@ class Action(Enum):
     multiply = auto()
     addsub = auto()
     relop = auto()
+    negate = auto()
     push_lineno = auto()
     placeholder_line = auto()
     jpf_from_skipped1 = auto()
@@ -307,6 +339,9 @@ class Action(Enum):
     return_code_block = auto()
     function_return = auto()
     set_function_return_value = auto()
+    push_array_index_address = auto()
+    push_address_value = auto()
+    array_assign = auto()
 
 
 class Code(Enum):

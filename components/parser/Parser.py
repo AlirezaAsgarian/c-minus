@@ -118,14 +118,15 @@ grammer_rules = {
     },
     NonTerminal.B: {
         (EQUAL,): [EQUAL, NonTerminal.Expression, Action.assign],
-        (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, CLOSED_BRACKET, NonTerminal.H],
+        (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, Action.push_array_index_address, CLOSED_BRACKET,
+                          NonTerminal.H],
         without_epsilon(NonTerminal.Simple_expression_prime.first + NonTerminal.B.follow): [
             NonTerminal.Simple_expression_prime]
     },
     NonTerminal.H: {
-        (EQUAL,): [EQUAL, NonTerminal.Expression],
+        (EQUAL,): [EQUAL, NonTerminal.Expression, Action.array_assign],
         without_epsilon(NonTerminal.G.first + NonTerminal.D.first + NonTerminal.C.first + NonTerminal.H.follow): [
-            NonTerminal.G, NonTerminal.D, NonTerminal.C]
+            Action.push_address_value, NonTerminal.G, NonTerminal.D, NonTerminal.C]
     },
     NonTerminal.Simple_expression_zegond: {
         NonTerminal.Additive_expression_zegond.first: [NonTerminal.Additive_expression_zegond, NonTerminal.C]
@@ -175,7 +176,7 @@ grammer_rules = {
     },
     NonTerminal.Signed_factor: {
         (PLUS,): [PLUS, NonTerminal.Factor],
-        (MINUS,): [MINUS, NonTerminal.Factor],
+        (MINUS,): [MINUS, NonTerminal.Factor, Action.negate],
         NonTerminal.Factor.first: [NonTerminal.Factor]
     },
     NonTerminal.Signed_factor_prime: {
@@ -184,20 +185,21 @@ grammer_rules = {
     },
     NonTerminal.Signed_factor_zegond: {
         (PLUS,): [PLUS, NonTerminal.Factor],
-        (MINUS,): [MINUS, NonTerminal.Factor],
+        (MINUS,): [MINUS, NonTerminal.Factor, Action.negate],
         NonTerminal.Factor_zegond.first: [NonTerminal.Factor_zegond]
     },
     NonTerminal.Factor: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Expression, CLOSED_PARENTHESIS],
         (TokenType.ID,): [Action.push_id, TokenType.ID, NonTerminal.Var_call_prime],
-        (TokenType.NUM,): [Action.push_id, TokenType.NUM]
+        (TokenType.NUM,): [Action.push_id, Action.push_stack, TokenType.NUM]
     },
     NonTerminal.Var_call_prime: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Args, CLOSED_PARENTHESIS],
         without_epsilon(NonTerminal.Var_prime.first + NonTerminal.Var_call_prime.follow): [NonTerminal.Var_prime]
     },
     NonTerminal.Var_prime: {
-        (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, CLOSED_BRACKET]
+        (OPEN_BRACKET,): [OPEN_BRACKET, NonTerminal.Expression, Action.push_array_index_address, CLOSED_BRACKET,
+                          Action.push_address_value]
     },
     NonTerminal.Factor_prime: {
         (OPEN_PARENTHESIS,): [OPEN_PARENTHESIS, NonTerminal.Args, CLOSED_PARENTHESIS]
