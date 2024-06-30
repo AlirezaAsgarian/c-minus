@@ -79,7 +79,7 @@ grammer_rules = {
         NonTerminal.Iteration_stmt.first: [NonTerminal.Iteration_stmt]
     },
     NonTerminal.Expression_stmt: {
-        NonTerminal.Expression.first: [NonTerminal.Expression, SEMICOLON],
+        NonTerminal.Expression.first: [NonTerminal.Expression, SEMICOLON, Action.pop_from_semantic],
         (Keywords.BREAK.value,): [Keywords.BREAK.value, Action.break_statement, SEMICOLON],
         (SEMICOLON,): [SEMICOLON]
     },
@@ -94,13 +94,14 @@ grammer_rules = {
         (Keywords.ELSE.value,): [Keywords.ELSE.value, NonTerminal.Statement, Keywords.ENDIF.value]
     },
     NonTerminal.Iteration_stmt: {
-        (Keywords.FOR.value,): [Keywords.FOR.value, OPEN_PARENTHESIS, NonTerminal.Expression, SEMICOLON,
+        (Keywords.FOR.value,): [Keywords.FOR.value, OPEN_PARENTHESIS,
+                                NonTerminal.Expression, Action.pop_from_semantic, SEMICOLON,
                                 Action.push_lineno, NonTerminal.Expression, SEMICOLON,
                                 Action.pop_stack,
                                 Action.push_lineno, Action.placeholder_line,
                                 Action.push_lineno, Action.placeholder_line,
                                 Action.push_lineno,
-                                NonTerminal.Expression, Action.jp_to_skipped4, CLOSED_PARENTHESIS,
+                                NonTerminal.Expression, Action.pop_from_semantic, Action.jp_to_skipped4, CLOSED_PARENTHESIS,
                                 Action.jp_from_skipped2,
                                 Action.loop_begin,
                                 NonTerminal.Statement,
@@ -139,7 +140,8 @@ grammer_rules = {
             NonTerminal.Additive_expression_prime, NonTerminal.C]
     },
     NonTerminal.C: {
-        NonTerminal.Relop.first: [Action.push_id, NonTerminal.Relop, NonTerminal.Additive_expression, Action.relop]
+        NonTerminal.Relop.first: [Action.push_id, NonTerminal.Relop,
+                                  NonTerminal.Additive_expression, Action.addsubmultrelop]
     },
     NonTerminal.Relop: {
         (LESS_THAN,): [LESS_THAN],
@@ -157,7 +159,7 @@ grammer_rules = {
         NonTerminal.Term_zegond.first: [NonTerminal.Term_zegond, NonTerminal.D]
     },
     NonTerminal.D: {
-        NonTerminal.Addop.first: [Action.push_id, NonTerminal.Addop, NonTerminal.Term, Action.addsub, NonTerminal.D]
+        NonTerminal.Addop.first: [Action.push_id, NonTerminal.Addop, NonTerminal.Term, Action.addsubmultrelop, NonTerminal.D]
     },
     NonTerminal.Addop: {
         (PLUS,): [PLUS],
@@ -174,7 +176,8 @@ grammer_rules = {
         NonTerminal.Signed_factor_zegond.first: [NonTerminal.Signed_factor_zegond, NonTerminal.G]
     },
     NonTerminal.G: {
-        (MULTIPLY_OPERATOR,): [MULTIPLY_OPERATOR, NonTerminal.Signed_factor, Action.multiply, NonTerminal.G]
+        (MULTIPLY_OPERATOR,): [Action.push_id, MULTIPLY_OPERATOR, NonTerminal.Signed_factor,
+                               Action.addsubmultrelop, NonTerminal.G]
     },
     NonTerminal.Signed_factor: {
         (PLUS,): [PLUS, NonTerminal.Factor],
@@ -215,14 +218,14 @@ grammer_rules = {
                                      Action.placeholder_line,  # push return_value_placeholder
                                      Action.placeholder_line, Action.placeholder_line,  # push return_address
                                      Action.push_fp_value,
-                                     Action.push_argn_counter,
+                                     Action.push_args_begin,
                                      NonTerminal.Arg_list, Action.call_function]
     },
     NonTerminal.Arg_list: {
-        NonTerminal.Expression.first: [NonTerminal.Expression, Action.inc_argn_counter, NonTerminal.Arg_list_prime]
+        NonTerminal.Expression.first: [NonTerminal.Expression, NonTerminal.Arg_list_prime]
     },
     NonTerminal.Arg_list_prime: {
-        (COMMA,): [COMMA, NonTerminal.Expression, Action.inc_argn_counter, NonTerminal.Arg_list_prime]
+        (COMMA,): [COMMA, NonTerminal.Expression, NonTerminal.Arg_list_prime]
     }
 }
 
@@ -233,7 +236,7 @@ epsilon_rule_actions = {
                        Action.placeholder_line,  # push return_value_placeholder
                        Action.placeholder_line, Action.placeholder_line,  # push return_address
                        Action.push_fp_value,
-                       Action.push_argn_counter,
+                       Action.push_args_begin,
                        Action.call_function]
 }
 

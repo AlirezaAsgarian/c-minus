@@ -27,11 +27,11 @@ class SymbolTable:
         self.table_stack.pop()
 
 
-SP = 5000
-FP = 5004
-TEMP = 5008
-DATA = 5012
-
+SP = 500
+FP = 504
+TEMP = 508
+DATA = 0
+STACK_START = TEMP + 4
 
 class CodeGenerator:
 
@@ -41,13 +41,13 @@ class CodeGenerator:
         self.global_table.push_empty_stack()
         self.function_table: SymbolTable = None
         self.semantic_stack = []
-        self.functions = {"output": Function("void", None, ["int"])}
+        self.functions = {"output": Function("void", None, [["input", "int"]])}
         self.current_function = None
         self.return_block_lineno = None
         self.loop_blocks = []
         self.semantic_errors = []
-        self.append_code((Code.ASSIGN, constant(0), direct(SP)))
-        self.append_code((Code.ASSIGN, constant(0), direct(FP)))
+        self.append_code((Code.ASSIGN, constant(STACK_START), direct(SP)))
+        self.append_code((Code.ASSIGN, constant(STACK_START), direct(FP)))
 
     def append_code(self, code):
         self.codes.append(code)
@@ -100,6 +100,7 @@ class CodeGenerator:
 
         elif action == Action.set_function_return_value:
             self.append_code_pop()
+            self.semantic_stack.pop()
             self.codes.append((Code.SUB, direct(FP), constant(12), direct(TEMP)))
             self.codes.append((Code.ASSIGN, indirect(SP), indirect(TEMP)))
 
@@ -111,12 +112,20 @@ class CodeGenerator:
             self.codes[fixlineno + 5] = (Code.JP, self.functions["main"].address)
 
         elif action == Action.call_function:
-            argn = self.semantic_stack.pop()
+            args = []
+            while self.semantic_stack[-1] != "args_begin":
+                args.append(self.semantic_stack.pop())
+            args.reverse()
+            self.semantic_stack.pop()
             fixlineno = self.semantic_stack.pop()
             function_name = self.semantic_stack.pop().lexeme
             function = self.functions[function_name]
-            if argn != len(function.parameters):
+            if len(args) != len(function.parameters):
                 self.error_argn_mismatch(input_lineno, function_name)
+            function_parameter_types = [x[1] for x in function.parameters]
+            for i, got, expected in zip(range(len(args)), args, function_parameter_types):
+                if got != expected:
+                    self.error_parameter_type_mismatch(input_lineno, function_name, i, got, expected)
             if function_name == "output":
                 self.codes[fixlineno] = (Code.ASSIGN, direct(0), direct(0))
                 self.codes[fixlineno + 1] = (Code.ASSIGN, direct(0), direct(0))
@@ -124,6 +133,7 @@ class CodeGenerator:
                 self.append_code_pop()
                 self.append_code((Code.PRINT, indirect(SP)))
                 self.append_code_pop()
+                self.semantic_stack.append("int")
                 return
             self.set_code_push(fixlineno, None)
             self.codes.append((Code.SUB, direct(SP), constant(4 * len(function.parameters)), direct(FP)))
@@ -132,6 +142,7 @@ class CodeGenerator:
             self.set_code_push(fixlineno + 1, constant(lineno))
             if function.return_type == "void":
                 self.append_code_pop()
+            self.semantic_stack.append("int")
 
         elif action == Action.begin_function:
             self.function_table = SymbolTable(0)
@@ -170,6 +181,7 @@ class CodeGenerator:
             self.append_code((Code.ADD, direct(SP), constant(symbol_size * 4), direct(SP)))
 
         elif action == Action.assign:
+            rhs_type = self.semantic_stack.pop()
             symbol_name = self.semantic_stack.pop().lexeme
             symbol = self.function_table.get_symbol(symbol_name)
             self.append_code_pop()
@@ -182,49 +194,58 @@ class CodeGenerator:
                     self.append_code((Code.ASSIGN, indirect(SP), direct(symbol.address)))
                 else:
                     self.error_symbol_not_defined(input_lineno, symbol_name)
+                    self.semantic_stack.append("int")
                     return
+            lhs_type = "int" if symbol.size is None else "array"
+            if rhs_type != lhs_type:
+                self.error_operator_type_mismatch(input_lineno, lhs_type, rhs_type)
             self.append_code_push(None)
+            self.semantic_stack.append(rhs_type)
 
         elif action == Action.push_stack:
             token = self.semantic_stack.pop()
             if token.token_type == TokenType.NUM:
                 self.append_code_push(constant(token.lexeme))
+                self.semantic_stack.append("int")
             elif token.token_type == TokenType.ID:
                 symbol = self.function_table.get_symbol(token.lexeme)
                 if symbol is not None:
                     self.append_code((Code.ADD, direct(FP), constant(symbol.address), direct(TEMP)))
-                    self.append_code_push(indirect(TEMP) if symbol.size is None else direct(TEMP))
+                    self.append_code_push(indirect(TEMP) if symbol.size is None or symbol.is_param else direct(TEMP))
                 else:
                     symbol = self.global_table.get_symbol(token.lexeme)
                     if symbol is not None:
                         self.append_code_push(direct(symbol.address) if symbol.size is None else constant(symbol.address))
                     else:
                         self.error_symbol_not_defined(input_lineno, token.lexeme)
+                        self.semantic_stack.append("int")
+                        return
+                self.semantic_stack.append("int" if symbol.size is None else "array")
 
         elif action == Action.pop_stack:
             self.append_code_pop()
+            self.semantic_stack.pop()
 
-        elif action == Action.multiply:
-            self.append_code_pop()
-            self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
-            self.append_code((Code.MULT, indirect(SP), indirect(TEMP), indirect(TEMP)))
-
-        elif action == Action.addsub:
+        elif action == Action.addsubmultrelop:
+            snd_type = self.semantic_stack.pop()
             op = self.semantic_stack.pop().lexeme
+            idx_type = self.semantic_stack.pop()
+            if idx_type != snd_type:
+                self.error_operator_type_mismatch(input_lineno, "array", "int")
             self.append_code_pop()
             self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
-            self.append_code(((Code.ADD if op == "+" else Code.SUB), indirect(TEMP), indirect(SP), indirect(TEMP)))
-
-        elif action == Action.relop:  # optimize with addsub and multiply
-            op = self.semantic_stack.pop().lexeme
-            self.append_code_pop()
-            self.append_code((Code.SUB, direct(SP), constant(4), direct(TEMP)))
-            self.append_code(((Code.LT if op == "<" else Code.EQ), indirect(TEMP), indirect(SP), indirect(TEMP)))
+            op_code = {"+": Code.ADD, "-": Code.SUB, "*": Code.MULT, "<": Code.LT, "==": Code.EQ}[op]
+            self.append_code((op_code, indirect(TEMP), indirect(SP), indirect(TEMP)))
+            self.semantic_stack.append("int")
 
         elif action == Action.negate:
+            idx_type = self.semantic_stack.pop()
+            if idx_type != "int":
+                self.error_operator_type_mismatch(input_lineno, "array", "int")
             self.append_code_pop()
             self.append_code((Code.SUB, constant(0), indirect(SP), indirect(SP)))
             self.append_code_push(None)
+            self.semantic_stack.append("int")
 
         elif action == Action.placeholder_line:
             self.append_code(())
@@ -265,6 +286,9 @@ class CodeGenerator:
             self.append_code_push(direct(FP))
 
         elif action == Action.push_array_index_address:
+            idx_type = self.semantic_stack.pop()
+            if idx_type != "int":
+                self.error_operator_type_mismatch(input_lineno, "array", "int")
             token = self.semantic_stack.pop()
             symbol = self.function_table.get_symbol(token.lexeme)
             self.append_code_pop()
@@ -278,8 +302,13 @@ class CodeGenerator:
                 symbol = self.global_table.get_symbol(token.lexeme)
                 self.append_code((Code.ADD, constant(symbol.address), indirect(SP), direct(TEMP)))
                 self.append_code_push(direct(TEMP))
+            self.semantic_stack.append("int")
 
         elif action == Action.array_assign:
+            rhs_type = self.semantic_stack.pop()
+            self.semantic_stack.pop()
+            if rhs_type != "int":
+                self.error_operator_type_mismatch(input_lineno, "array", "int")
             self.append_code_pop()
             self.append_code_pop()
             self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
@@ -288,6 +317,7 @@ class CodeGenerator:
             self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
             self.append_code_pop()
             self.append_code_push(direct(TEMP))
+            self.semantic_stack.append("int")
 
         elif action == Action.push_address_value:
             self.append_code_pop()
@@ -311,11 +341,11 @@ class CodeGenerator:
                 self.codes[break_stat_line] = (Code.JP, lineno)
             self.loop_blocks.pop()
 
-        elif action == Action.push_argn_counter:
-            self.semantic_stack.append(0)
+        elif action == Action.push_args_begin:
+            self.semantic_stack.append("args_begin")
 
-        elif action == Action.inc_argn_counter:
-            self.semantic_stack[-1] += 1
+        elif action == Action.pop_from_semantic:
+            self.semantic_stack.pop()
 
     def error_symbol_not_defined(self, lineno, symbol_name):
         self.semantic_errors.append((lineno, "'%s' is not defined." % symbol_name))
@@ -328,6 +358,14 @@ class CodeGenerator:
 
     def error_break_outside_loop(self, lineno):
         self.semantic_errors.append((lineno, "No 'for' found for 'break'."))
+
+    def error_parameter_type_mismatch(self, lineno, function_name, argno, got, expected):
+        self.semantic_errors.append((lineno,
+                                     "Mismatch in type of argument %s of '%s'. Expected '%s' but got '%s' instead."
+                                     % (argno + 1, function_name, expected, got)))
+
+    def error_operator_type_mismatch(self, lineno, got, expected):
+        self.semantic_errors.append((lineno, "Type mismatch in operands, Got %s instead of %s." % (got, expected)))
 
 
 def constant(value):
@@ -353,7 +391,7 @@ class Variable:
 class Function:
     return_type: str
     address: int
-    parameters: List[str]
+    parameters: List[List[str]]
 
 
 class Action(Enum):
@@ -367,9 +405,7 @@ class Action(Enum):
     push_stack = auto()
     pop_stack = auto()
     assign = auto()
-    multiply = auto()
-    addsub = auto()
-    relop = auto()
+    addsubmultrelop = auto()
     negate = auto()
     push_lineno = auto()
     placeholder_line = auto()
@@ -394,9 +430,8 @@ class Action(Enum):
     loop_begin = auto()
     loop_end = auto()
     break_statement = auto()
-    assert_correct_argn = auto()
-    inc_argn_counter = auto()
-    push_argn_counter = auto()
+    push_args_begin = auto()
+    pop_from_semantic = auto()
 
 
 class Code(Enum):
