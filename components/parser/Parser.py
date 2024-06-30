@@ -80,7 +80,7 @@ grammer_rules = {
     },
     NonTerminal.Expression_stmt: {
         NonTerminal.Expression.first: [NonTerminal.Expression, SEMICOLON],
-        (Keywords.BREAK.value,): [Keywords.BREAK.value, SEMICOLON],
+        (Keywords.BREAK.value,): [Keywords.BREAK.value, Action.break_statement, SEMICOLON],
         (SEMICOLON,): [SEMICOLON]
     },
     NonTerminal.Selection_stmt: {
@@ -102,8 +102,10 @@ grammer_rules = {
                                 Action.push_lineno,
                                 NonTerminal.Expression, Action.jp_to_skipped4, CLOSED_PARENTHESIS,
                                 Action.jp_from_skipped2,
+                                Action.loop_begin,
                                 NonTerminal.Statement,
-                                Action.jp_to_skipped1, Action.jpf_from_skipped1]
+                                Action.jp_to_skipped1, Action.jpf_from_skipped1,
+                                Action.loop_end]
     },
     NonTerminal.Return_stmt: {
         (Keywords.RETURN.value,): [Keywords.RETURN.value, NonTerminal.Return_stmt_prime, Action.function_return]
@@ -213,19 +215,26 @@ grammer_rules = {
                                      Action.placeholder_line,  # push return_value_placeholder
                                      Action.placeholder_line, Action.placeholder_line,  # push return_address
                                      Action.push_fp_value,
+                                     Action.push_argn_counter,
                                      NonTerminal.Arg_list, Action.call_function]
     },
     NonTerminal.Arg_list: {
-        NonTerminal.Expression.first: [NonTerminal.Expression, NonTerminal.Arg_list_prime]
+        NonTerminal.Expression.first: [NonTerminal.Expression, Action.inc_argn_counter, NonTerminal.Arg_list_prime]
     },
     NonTerminal.Arg_list_prime: {
-        (COMMA,): [COMMA, NonTerminal.Expression, NonTerminal.Arg_list_prime]
+        (COMMA,): [COMMA, NonTerminal.Expression, Action.inc_argn_counter, NonTerminal.Arg_list_prime]
     }
 }
 
 epsilon_rule_actions = {
     NonTerminal.Factor_prime: [Action.push_stack],
-    NonTerminal.Var_prime: [Action.push_stack]
+    NonTerminal.Var_prime: [Action.push_stack],
+    NonTerminal.Args: [Action.push_lineno,
+                       Action.placeholder_line,  # push return_value_placeholder
+                       Action.placeholder_line, Action.placeholder_line,  # push return_address
+                       Action.push_fp_value,
+                       Action.push_argn_counter,
+                       Action.call_function]
 }
 
 
@@ -261,7 +270,7 @@ class Parser:
             if self.is_current_token_in(possible_token):
                 for var in rule:
                     if isinstance(var, Action):
-                        self.code_generator.codegen(var, self.current_token)
+                        self.code_generator.codegen(var, self.current_token, self.current_token.lineno)
                     elif isinstance(var, NonTerminal):
                         node = Node(str(var.name.replace('_', '-')), current_node)
                         self.parse(var, node)
@@ -276,7 +285,7 @@ class Parser:
             Node(EPSILON, current_node)
             if current_state in epsilon_rule_actions:
                 for action in epsilon_rule_actions[current_state]:
-                    self.code_generator.codegen(action, None)
+                    self.code_generator.codegen(action, None, self.current_token.lineno)
             return
 
         if self.is_current_token_in(current_state.follow):
@@ -320,13 +329,10 @@ class Parser:
     def add_error_missing_token(self, token):
         self.errors.append("#%s : syntax error, missing %s"
                            % (self.current_token.lineno, token.replace('_', '-')))
-        print(self.errors[-1])
 
     def add_error_illegal_token(self):
         self.errors.append("#%s : syntax error, illegal %s"
                            % (self.current_token.lineno, get_lexeme_or_type(self.current_token)))
-        print(self.errors[-1])
 
     def add_error_unexpected_eof(self):
         self.errors.append("#%s : syntax error, Unexpected EOF" % self.current_token.lineno)
-        print(self.errors[-1])

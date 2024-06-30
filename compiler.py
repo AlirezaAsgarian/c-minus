@@ -14,6 +14,14 @@ if __name__ == '__main__':
     parser = Parser(scanner)
     parse_tree = parser.parse_all()
 
+    with open("semantic_errors.txt", "w") as f:
+        errors = parser.code_generator.semantic_errors
+        if not errors:
+            f.write("The input program is semantically correct")
+        else:
+            for lineno, err in errors:
+                f.write("#%s : Semantic Error! %s\n" % (lineno, err))
+
     with open("output.txt", "w") as f:
         for i, x in enumerate(parser.code_generator.codes):
             f.write("%s\t(%s, %s, %s, %s)\n" % (

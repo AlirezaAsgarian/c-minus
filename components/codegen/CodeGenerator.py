@@ -27,10 +27,10 @@ class SymbolTable:
         self.table_stack.pop()
 
 
-SP = 500
-FP = 504
-TEMP = 508
-DATA = 512
+SP = 5000
+FP = 5004
+TEMP = 5008
+DATA = 5012
 
 
 class CodeGenerator:
@@ -44,6 +44,8 @@ class CodeGenerator:
         self.functions = {"output": Function("void", None, ["int"])}
         self.current_function = None
         self.return_block_lineno = None
+        self.loop_blocks = []
+        self.semantic_errors = []
         self.append_code((Code.ASSIGN, constant(0), direct(SP)))
         self.append_code((Code.ASSIGN, constant(0), direct(FP)))
 
@@ -52,7 +54,6 @@ class CodeGenerator:
 
     def set_code_push(self, lineno, value):
         if value is not None:
-            print(lineno, value)
             self.codes[lineno] = (Code.ASSIGN, value, indirect(SP))
             lineno += 1
         self.codes[lineno] = (Code.ADD, direct(SP), constant(4), direct(SP))
@@ -66,7 +67,7 @@ class CodeGenerator:
     def append_code_pop(self):
         self.append_code((Code.SUB, direct(SP), constant(4), direct(SP)))
 
-    def codegen(self, action, token):
+    def codegen(self, action, token, input_lineno):
 
         if action == Action.push_id:
             self.semantic_stack.append(token)
@@ -110,8 +111,12 @@ class CodeGenerator:
             self.codes[fixlineno + 5] = (Code.JP, self.functions["main"].address)
 
         elif action == Action.call_function:
-            function_name = self.semantic_stack.pop(-2).lexeme
+            argn = self.semantic_stack.pop()
             fixlineno = self.semantic_stack.pop()
+            function_name = self.semantic_stack.pop().lexeme
+            function = self.functions[function_name]
+            if argn != len(function.parameters):
+                self.error_argn_mismatch(input_lineno, function_name)
             if function_name == "output":
                 self.codes[fixlineno] = (Code.ASSIGN, direct(0), direct(0))
                 self.codes[fixlineno + 1] = (Code.ASSIGN, direct(0), direct(0))
@@ -120,7 +125,6 @@ class CodeGenerator:
                 self.append_code((Code.PRINT, indirect(SP)))
                 self.append_code_pop()
                 return
-            function = self.functions[function_name]
             self.set_code_push(fixlineno, None)
             self.codes.append((Code.SUB, direct(SP), constant(4 * len(function.parameters)), direct(FP)))
             self.codes.append((Code.JP, function.address))
@@ -148,7 +152,7 @@ class CodeGenerator:
             symbol_name = self.semantic_stack.pop().lexeme
             symbol_type = self.semantic_stack.pop().lexeme
             if symbol_type != "int":
-                pass
+                self.error_void_symbol_type(input_lineno, symbol_name)
             if self.function_table is None:
                 self.global_table.add_symbol(symbol_name)
             else:
@@ -174,7 +178,12 @@ class CodeGenerator:
                 self.append_code((Code.ASSIGN, indirect(SP), indirect(TEMP)))
             else:
                 symbol = self.global_table.get_symbol(symbol_name)
-                self.append_code((Code.ASSIGN, indirect(SP), direct(symbol.address)))
+                if symbol is not None:
+                    self.append_code((Code.ASSIGN, indirect(SP), direct(symbol.address)))
+                else:
+                    self.error_symbol_not_defined(input_lineno, symbol_name)
+                    return
+            self.append_code_push(None)
 
         elif action == Action.push_stack:
             token = self.semantic_stack.pop()
@@ -187,7 +196,10 @@ class CodeGenerator:
                     self.append_code_push(indirect(TEMP) if symbol.size is None else direct(TEMP))
                 else:
                     symbol = self.global_table.get_symbol(token.lexeme)
-                    self.append_code_push(direct(symbol.address) if symbol.size is None else constant(symbol.address))
+                    if symbol is not None:
+                        self.append_code_push(direct(symbol.address) if symbol.size is None else constant(symbol.address))
+                    else:
+                        self.error_symbol_not_defined(input_lineno, token.lexeme)
 
         elif action == Action.pop_stack:
             self.append_code_pop()
@@ -273,12 +285,49 @@ class CodeGenerator:
             self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
             self.append_code_push(None)
             self.append_code((Code.ASSIGN, indirect(SP), indirect(TEMP)))
+            self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
             self.append_code_pop()
+            self.append_code_push(direct(TEMP))
 
         elif action == Action.push_address_value:
             self.append_code_pop()
             self.append_code((Code.ASSIGN, indirect(SP), direct(TEMP)))
             self.append_code_push(indirect(TEMP))
+
+        elif action == Action.loop_begin:
+            self.loop_blocks.append([])
+
+        elif action == Action.break_statement:
+            if not self.loop_blocks:
+                self.error_break_outside_loop(input_lineno)
+                return
+            lineno = len(self.codes)
+            self.loop_blocks[-1].append(lineno)
+            self.append_code(())
+
+        elif action == Action.loop_end:
+            lineno = len(self.codes)
+            for break_stat_line in self.loop_blocks[-1]:
+                self.codes[break_stat_line] = (Code.JP, lineno)
+            self.loop_blocks.pop()
+
+        elif action == Action.push_argn_counter:
+            self.semantic_stack.append(0)
+
+        elif action == Action.inc_argn_counter:
+            self.semantic_stack[-1] += 1
+
+    def error_symbol_not_defined(self, lineno, symbol_name):
+        self.semantic_errors.append((lineno, "'%s' is not defined." % symbol_name))
+
+    def error_argn_mismatch(self, lineno, function_name):
+        self.semantic_errors.append((lineno, "Mismatch in numbers of arguments of '%s'." % function_name))
+
+    def error_void_symbol_type(self, lineno, symbol_name):
+        self.semantic_errors.append((lineno, "Illegal type of void for '%s'." % symbol_name))
+
+    def error_break_outside_loop(self, lineno):
+        self.semantic_errors.append((lineno, "No 'for' found for 'break'."))
 
 
 def constant(value):
@@ -342,6 +391,12 @@ class Action(Enum):
     push_array_index_address = auto()
     push_address_value = auto()
     array_assign = auto()
+    loop_begin = auto()
+    loop_end = auto()
+    break_statement = auto()
+    assert_correct_argn = auto()
+    inc_argn_counter = auto()
+    push_argn_counter = auto()
 
 
 class Code(Enum):
